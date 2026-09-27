@@ -1,0 +1,35 @@
+plugins {
+    id 'java'
+}
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://repo.papermc.io/repository/maven-public/' }
+}
+
+dependencies {
+    compileOnly 'io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT'
+    compileOnly 'org.apache.logging.log4j:log4j-core:2.23.1'
+
+    implementation project(':mydash-api')
+    implementation project(':mydash-core')
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+processResources {
+    inputs.property 'version', mydash_version
+    filesMatching('plugin.yml') {
+        expand version: mydash_version
+    }
+}
+
+tasks.named('jar', Jar) {
+    from(project(':mydash-api').sourceSets.main.output)
+    from(project(':mydash-core').sourceSets.main.output)
+    archiveFileName = "myDash-paper-1.21.1-v${mydash_version}.jar"
+}
