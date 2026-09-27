@@ -125,6 +125,19 @@ jobs:
       - name: Build
         run: gradle ${{ matrix.task }} --build-cache --parallel --stacktrace
 
+      - name: Publish bundle JAR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[bundle]')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: mydash-v2.1
+          name: myDash v2.1
+          target_commitish: ${{ github.sha }}
+          generate_release_notes: false
+          body: |
+            Build-verified myDash v2.1 server JARs for every currently supported Minecraft/platform target.
+          overwrite_files: true
+          files: platforms/**/build/libs/myDash-*.jar
+
   standalone:
     needs: changes
     if: needs.changes.outputs.standalone == 'true'
@@ -203,6 +216,19 @@ jobs:
       - name: Build ${{ matrix.name }}
         run: gradle -p ${{ matrix.path }} build --build-cache --stacktrace
 
+      - name: Publish bundle JAR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[bundle]')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: mydash-v2.1
+          name: myDash v2.1
+          target_commitish: ${{ github.sha }}
+          generate_release_notes: false
+          body: |
+            Build-verified myDash v2.1 server JARs for every currently supported Minecraft/platform target.
+          overwrite_files: true
+          files: "${{ matrix.path }}/build/libs/myDash-*.jar"
+
   calver:
     needs: changes
     if: needs.changes.outputs.calver == 'true'
@@ -256,244 +282,18 @@ jobs:
           ORG_GRADLE_PROJECT_loomVersion: "${{ matrix.loom }}"
         run: gradle -p ${{ matrix.path }} build --build-cache --stacktrace
 
-  bundle-release:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[bundle]')
-    needs: [modern, standalone, calver]
-    runs-on: [self-hosted, Windows, X64]
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Repair corrupted Maven toolchain metadata
-        shell: powershell
-        run: |
-          $toolchains = Join-Path $HOME ".m2\toolchains.xml"
-          if (Test-Path $toolchains) {
-            $bytes = [System.IO.File]::ReadAllBytes($toolchains)
-            if ($bytes -contains 0) { Remove-Item $toolchains -Force }
-          }
-
-      - name: Set up Java 21
-        uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: "21"
-
-      - name: Set up Gradle 8.8
-        uses: gradle/actions/setup-gradle@v6
-        with:
-          gradle-version: "8.8"
-          cache-disabled: true
-          validate-wrappers: false
-
-      - name: Build Java 21 targets
-        shell: powershell
-        run: |
-          gradle buildSupported --build-cache --parallel --stacktrace
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          gradle -p legacy/fabric-1.16.5 build --build-cache --stacktrace
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          gradle -p legacy/fabric-1.18.2 build --build-cache --stacktrace
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          gradle -p legacy/fabric-1.20.1 build --build-cache --stacktrace
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          gradle -p legacy/paper-1.20.1 build --build-cache --stacktrace
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Switch to Java 17
-        uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - name: Set up Gradle 7.6.4
-        uses: gradle/actions/setup-gradle@v6
-        with:
-          gradle-version: "7.6.4"
-          cache-disabled: true
-          validate-wrappers: false
-
-      - name: Build Java 17 legacy targets
-        shell: powershell
-        run: |
-          gradle -p legacy/forge-1.18.2 build --build-cache --stacktrace
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          gradle -p legacy/paper-1.18.2 build --build-cache --stacktrace
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Set up Gradle 8.8 for Forge 1.20.1
-        uses: gradle/actions/setup-gradle@v6
-        with:
-          gradle-version: "8.8"
-          cache-disabled: true
-          validate-wrappers: false
-
-      - name: Build Forge 1.20.1
-        run: gradle -p legacy/forge-1.20.1 build --build-cache --stacktrace
-
-      - name: Switch to Java 16
-        uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: "16"
-
-      - name: Set up Gradle 7.6.4 for Paper 1.16.5
-        uses: gradle/actions/setup-gradle@v6
-        with:
-          gradle-version: "7.6.4"
-          cache-disabled: true
-          validate-wrappers: false
-
-      - name: Build Paper 1.16.5
-        run: gradle -p legacy/paper-1.16.5 build --build-cache --stacktrace
-
-      - name: Switch to Java 8
-        uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: "8"
-
-      - name: Build Forge 1.16.5
-        run: gradle -p legacy/forge-1.16.5 build --build-cache --stacktrace
-
-      - name: Switch to Java 25
-        uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: "25"
-
-      - name: Set up Gradle 9.2.1
-        uses: gradle/actions/setup-gradle@v6
-        with:
-          gradle-version: "9.2.1"
-          cache-disabled: true
-          validate-wrappers: false
-
-      - name: Build NeoForge 26.x
-        shell: powershell
-        run: |
-          foreach ($mc in @("26.1","26.2","26.3")) {
-            $env:ORG_GRADLE_PROJECT_targetMinecraft = $mc
-            gradle -p calver/neoforge build --build-cache --stacktrace
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          }
-
-      - name: Set up Gradle 9.4.0
-        uses: gradle/actions/setup-gradle@v6
-        with:
-          gradle-version: "9.4.0"
-          cache-disabled: true
-          validate-wrappers: false
-
-      - name: Build 26.1 targets
-        shell: powershell
-        run: |
-          $env:ORG_GRADLE_PROJECT_targetMinecraft = "26.1"
-          gradle -p calver/forge build --build-cache --stacktrace
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $env:ORG_GRADLE_PROJECT_loomVersion = "1.15-SNAPSHOT"
-          gradle -p calver/fabric build --build-cache --stacktrace
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          gradle -p calver/paper build --build-cache --stacktrace
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Set up Gradle 9.5.0
-        uses: gradle/actions/setup-gradle@v6
-        with:
-          gradle-version: "9.5.0"
-          cache-disabled: true
-          validate-wrappers: false
-
-      - name: Build Forge 26.2
-        shell: powershell
-        run: |
-          $env:ORG_GRADLE_PROJECT_targetMinecraft = "26.2"
-          Remove-Item Env:ORG_GRADLE_PROJECT_loomVersion -ErrorAction SilentlyContinue
-          gradle -p calver/forge build --build-cache --stacktrace
-
-      - name: Set up Gradle 9.5.1
-        uses: gradle/actions/setup-gradle@v6
-        with:
-          gradle-version: "9.5.1"
-          cache-disabled: true
-          validate-wrappers: false
-
-      - name: Build Fabric and Paper 26.2
-        shell: powershell
-        run: |
-          $env:ORG_GRADLE_PROJECT_targetMinecraft = "26.2"
-          $env:ORG_GRADLE_PROJECT_loomVersion = "1.17-SNAPSHOT"
-          gradle -p calver/fabric build --build-cache --stacktrace
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          gradle -p calver/paper build --build-cache --stacktrace
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Set up Gradle 9.6.0
-        uses: gradle/actions/setup-gradle@v6
-        with:
-          gradle-version: "9.6.0"
-          cache-disabled: true
-          validate-wrappers: false
-
-      - name: Build Fabric and Paper 26.3
-        shell: powershell
-        run: |
-          $env:ORG_GRADLE_PROJECT_targetMinecraft = "26.3"
-          $env:ORG_GRADLE_PROJECT_loomVersion = "1.17-SNAPSHOT"
-          gradle -p calver/fabric build --build-cache --stacktrace
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          gradle -p calver/paper build --build-cache --stacktrace
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Set up Gradle 9.7.1
-        uses: gradle/actions/setup-gradle@v6
-        with:
-          gradle-version: "9.7.1"
-          cache-disabled: true
-          validate-wrappers: false
-
-      - name: Build Forge 26.3
-        shell: powershell
-        run: |
-          $env:ORG_GRADLE_PROJECT_targetMinecraft = "26.3"
-          Remove-Item Env:ORG_GRADLE_PROJECT_loomVersion -ErrorAction SilentlyContinue
-          gradle -p calver/forge build --build-cache --stacktrace
-
-      - name: Publish myDash v2.1 bundle
+      - name: Publish bundle JAR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[bundle]')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: mydash-v2.1
           name: myDash v2.1
-          target_commitish: \${{ github.sha }}
+          target_commitish: ${{ github.sha }}
           generate_release_notes: false
           body: |
             Build-verified myDash v2.1 server JARs for every currently supported Minecraft/platform target.
           overwrite_files: true
-          files: |
-            platforms/neoforge-1.21.1/build/libs/myDash-neoforge-1.21.1-v2.1.jar
-            platforms/fabric-1.21.1/build/libs/myDash-fabric-1.21.1-v2.1.jar
-            platforms/paper-1.21.1/build/libs/myDash-paper-1.21.1-v2.1.jar
-            legacy/forge-1.16.5/build/libs/myDash-forge-1.16.5-v2.1.jar
-            legacy/fabric-1.16.5/build/libs/myDash-fabric-1.16.5-v2.1.jar
-            legacy/paper-1.16.5/build/libs/myDash-paper-1.16.5-v2.1.jar
-            legacy/forge-1.18.2/build/libs/myDash-forge-1.18.2-v2.1.jar
-            legacy/fabric-1.18.2/build/libs/myDash-fabric-1.18.2-v2.1.jar
-            legacy/paper-1.18.2/build/libs/myDash-paper-1.18.2-v2.1.jar
-            legacy/forge-1.20.1/build/libs/myDash-forge-1.20.1-v2.1.jar
-            legacy/fabric-1.20.1/build/libs/myDash-fabric-1.20.1-v2.1.jar
-            legacy/paper-1.20.1/build/libs/myDash-paper-1.20.1-v2.1.jar
-            calver/forge/build/libs/myDash-forge-26.1-v2.1.jar
-            calver/forge/build/libs/myDash-forge-26.2-v2.1.jar
-            calver/forge/build/libs/myDash-forge-26.3-v2.1.jar
-            calver/neoforge/build/libs/myDash-neoforge-26.1-v2.1.jar
-            calver/neoforge/build/libs/myDash-neoforge-26.2-v2.1.jar
-            calver/neoforge/build/libs/myDash-neoforge-26.3-v2.1.jar
-            calver/fabric/build/libs/myDash-fabric-26.1-v2.1.jar
-            calver/fabric/build/libs/myDash-fabric-26.2-v2.1.jar
-            calver/fabric/build/libs/myDash-fabric-26.3-v2.1.jar
-            calver/paper/build/libs/myDash-paper-26.1-v2.1.jar
-            calver/paper/build/libs/myDash-paper-26.2-v2.1.jar
-            calver/paper/build/libs/myDash-paper-26.3-v2.1.jar
+          files: "${{ matrix.path }}/build/libs/myDash-*-${{ matrix.mc }}-v2.1.jar"
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
