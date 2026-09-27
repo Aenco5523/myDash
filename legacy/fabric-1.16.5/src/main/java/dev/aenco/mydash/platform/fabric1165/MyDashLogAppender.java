@@ -9,7 +9,6 @@ import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.appender.AbstractAppender;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
-import org.apache.logging.log4j.core.config.Property;
 import org.apache.logging.log4j.core.layout.PatternLayout;
 
 import java.io.PrintWriter;
@@ -27,8 +26,7 @@ final class MyDashLogAppender extends AbstractAppender implements AutoCloseable 
             APPENDER_NAME,
             (Filter) null,
             (Layout<? extends Serializable>) PatternLayout.createDefaultLayout(),
-            true,
-            new Property[0]
+            true
         );
         this.core = core;
     }
