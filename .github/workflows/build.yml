@@ -56,7 +56,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: "8.8"
-          cache-provider: external
+          cache-disabled: true
           validate-wrappers: false
 
       - name: Show local Gradle cache
@@ -101,7 +101,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: "8.8"
-          cache-provider: external
+          cache-disabled: true
           validate-wrappers: false
 
       - name: Build all release JARs
