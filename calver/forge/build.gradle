@@ -1,0 +1,43 @@
+plugins {
+    id 'java'
+    id 'net.minecraftforge.gradle' version '[7.0.29,8.0)'
+}
+group = 'dev.aenco.mydash'
+version = 'v2.1'
+def mcVersion = providers.gradleProperty('targetMinecraft').orElse('26.3').get()
+def forgeVersions = ['26.1':'62.0.9','26.2':'65.0.9','26.3':'66.0.4']
+def loaderMajors = ['26.1':'62','26.2':'65','26.3':'66']
+def mcRanges = ['26.1':'[26.1,26.2)','26.2':'[26.2,26.3)','26.3':'[26.3,26.4)']
+if (!forgeVersions.containsKey(mcVersion)) throw new GradleException("Unsupported Forge version: " + mcVersion)
+base { archivesName = "myDash-forge-${mcVersion}" }
+java { toolchain { languageVersion = JavaLanguageVersion.of(25) } }
+sourceSets {
+    main {
+        java {
+            srcDir '../../mydash-api/src/main/java'
+            srcDir '../../mydash-core/src/main/java'
+        }
+        resources { srcDir '../../mydash-core/src/main/resources' }
+    }
+}
+minecraft { }
+repositories {
+    minecraft.mavenizer(it)
+    maven fg.forgeMaven
+    maven fg.minecraftLibsMaven
+    mavenCentral()
+}
+dependencies {
+    implementation minecraft.dependency("net.minecraftforge:forge:${mcVersion}-${forgeVersions[mcVersion]}")
+    annotationProcessor 'net.minecraftforge:eventbus-validator:7.0.5'
+}
+processResources {
+    filesMatching('META-INF/mods.toml') {
+        expand mod_version:'2.1', minecraft_version_range:mcRanges[mcVersion], forge_loader_major:loaderMajors[mcVersion]
+    }
+}
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 25
+}
+tasks.named('jar', Jar) { archiveFileName = "myDash-forge-${mcVersion}-v2.1.jar" }

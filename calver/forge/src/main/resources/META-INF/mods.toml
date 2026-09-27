@@ -1,0 +1,22 @@
+modLoader="javafml"
+loaderVersion="[${forge_loader_major},)"
+license="All Rights Reserved"
+[[mods]]
+modId="mydash"
+version="${mod_version}"
+displayName="myDash"
+authors="Aenco5523"
+displayURL="https://github.com/Aenco5523/myDash"
+description='''Self-hosted Minecraft server management dashboard and extensible API.'''
+[[dependencies.mydash]]
+modId="forge"
+mandatory=true
+versionRange="[${forge_loader_major},)"
+ordering="NONE"
+side="SERVER"
+[[dependencies.mydash]]
+modId="minecraft"
+mandatory=true
+versionRange="${minecraft_version_range}"
+ordering="NONE"
+side="SERVER"

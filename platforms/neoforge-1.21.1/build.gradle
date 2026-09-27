@@ -1,0 +1,53 @@
+plugins {
+    id 'net.neoforged.moddev' version '2.0.147'
+}
+
+version = "v${mydash_version}"
+
+base {
+    archivesName = "myDash-neoforge-${neoforge_minecraft_version}"
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+neoForge {
+    version = neoforge_version
+    validateAccessTransformers = true
+
+    mods {
+        mydash {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+dependencies {
+    implementation project(':mydash-api')
+    implementation project(':mydash-core')
+}
+
+processResources {
+    def props = [
+        mod_id: mod_id,
+        mod_name: mod_name,
+        mod_version: mydash_version,
+        mod_license: mod_license,
+        neo_version: neoforge_version,
+        loader_version_range: neoforge_loader_range,
+        minecraft_version_range: neoforge_minecraft_range
+    ]
+    inputs.properties props
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand props
+    }
+}
+
+tasks.named('jar', Jar) {
+    from(project(':mydash-api').sourceSets.main.output)
+    from(project(':mydash-core').sourceSets.main.output)
+    archiveFileName = "myDash-neoforge-${neoforge_minecraft_version}-v${mydash_version}.jar"
+}

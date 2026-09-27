@@ -1,0 +1,8 @@
+name: myDash
+version: '${version}'
+main: dev.aenco.mydash.platform.calver.paper.MyDashPaperCalver
+api-version: '${minecraft_version}'
+author: Aenco5523
+website: https://github.com/Aenco5523/myDash
+description: Self-hosted Minecraft server management dashboard and extensible API.
+load: POSTWORLD

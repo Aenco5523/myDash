@@ -1,0 +1,55 @@
+plugins {
+    id 'fabric-loom' version "${fabric_loom_version}"
+}
+
+version = "v${mydash_version}"
+
+base {
+    archivesName = "myDash-fabric-${fabric_minecraft_version}"
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${fabric_minecraft_version}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+
+    implementation project(':mydash-api')
+    implementation project(':mydash-core')
+}
+
+loom {
+    mods {
+        mydash {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+processResources {
+    inputs.property 'version', mydash_version
+    inputs.property 'minecraft_version', fabric_minecraft_version
+    filesMatching('fabric.mod.json') {
+        expand version: mydash_version, minecraft_version: fabric_minecraft_version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+    withSourcesJar()
+}
+
+tasks.named('jar', Jar) {
+    from(project(':mydash-api').sourceSets.main.output)
+    from(project(':mydash-core').sourceSets.main.output)
+}
+
+tasks.named('remapJar') {
+    archiveFileName = "myDash-fabric-${fabric_minecraft_version}-v${mydash_version}.jar"
+}

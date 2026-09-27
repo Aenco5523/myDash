@@ -1,0 +1,27 @@
+modLoader="javafml"
+loaderVersion="[40,)"
+license="All Rights Reserved"
+
+[[mods]]
+modId="mydash"
+version="2.1"
+displayName="myDash"
+authors="Aenco5523"
+displayURL="https://github.com/Aenco5523/myDash"
+description='''
+Self-hosted Minecraft server management dashboard and extensible API.
+'''
+
+[[dependencies.mydash]]
+modId="forge"
+mandatory=true
+versionRange="[40.2.0,)"
+ordering="NONE"
+side="SERVER"
+
+[[dependencies.mydash]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.18.2,1.19)"
+ordering="NONE"
+side="SERVER"

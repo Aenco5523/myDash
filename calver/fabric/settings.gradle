@@ -1,0 +1,11 @@
+pluginManagement {
+    repositories {
+        maven { url = 'https://maven.fabricmc.net/' }
+        gradlePluginPortal()
+    }
+    plugins {
+        id 'net.fabricmc.fabric-loom' version providers.gradleProperty('loomVersion').orElse('1.17-SNAPSHOT').get()
+    }
+}
+
+rootProject.name = 'myDash-fabric-calver'

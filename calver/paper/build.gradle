@@ -1,0 +1,33 @@
+plugins { id 'java' }
+group = 'dev.aenco.mydash'
+version = 'v2.1'
+def mcVersion = providers.gradleProperty('targetMinecraft').orElse('26.3').get()
+if (!['26.1','26.2','26.3'].contains(mcVersion)) throw new GradleException("Unsupported Paper version: " + mcVersion)
+repositories {
+    mavenCentral()
+    maven { url = 'https://repo.papermc.io/repository/maven-public/' }
+}
+def paperApiVersions = [
+    '26.1': '26.1.2.build.+',
+    '26.2': '26.2.build.+',
+    '26.3': '26.3.build.+'
+]
+
+dependencies {
+    compileOnly "io.papermc.paper:paper-api:${paperApiVersions[mcVersion]}"
+    compileOnly 'org.apache.logging.log4j:log4j-core:2.25.2'
+}
+sourceSets {
+    main {
+        java {
+            srcDir '../../mydash-api/src/main/java'
+            srcDir '../../mydash-core/src/main/java'
+        }
+        resources { srcDir '../../mydash-core/src/main/resources' }
+    }
+}
+java { toolchain { languageVersion = JavaLanguageVersion.of(25) } }
+processResources {
+    filesMatching('plugin.yml') { expand version:'2.1', minecraft_version:mcVersion }
+}
+tasks.named('jar', Jar) { archiveFileName = "myDash-paper-${mcVersion}-v2.1.jar" }
