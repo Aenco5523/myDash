@@ -7,8 +7,14 @@ repositories {
     mavenCentral()
     maven { url = 'https://repo.papermc.io/repository/maven-public/' }
 }
+def paperApiVersions = [
+    '26.1': '26.1.2-R0.1-SNAPSHOT',
+    '26.2': '26.2.build.+',
+    '26.3': '26.3.build.+'
+]
+
 dependencies {
-    compileOnly "io.papermc.paper:paper-api:${mcVersion}.build.+"
+    compileOnly "io.papermc.paper:paper-api:${paperApiVersions[mcVersion]}"
     compileOnly 'org.apache.logging.log4j:log4j-core:2.25.2'
 }
 sourceSets {
