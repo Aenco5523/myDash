@@ -12,6 +12,7 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
@@ -46,6 +47,11 @@ public final class MyDashFabric implements ModInitializer {
                     server.getMaxPlayers(),
                     System.currentTimeMillis() - startedAt
                 );
+            }
+
+            @Override
+            public Path serverDirectory() {
+                return Paths.get(".").toAbsolutePath().normalize();
             }
 
             @Override
