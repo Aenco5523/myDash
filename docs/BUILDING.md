@@ -2,72 +2,63 @@
 
 ## Self-hosted runner
 
-myDash CI intentionally uses only GitHub self-hosted runners.
-
-The workflow uses:
+myDash CI intentionally uses only GitHub self-hosted Windows runners.
 
 ```yaml
-runs-on: self-hosted
+runs-on: [self-hosted, Windows, X64]
 ```
 
 No GitHub-hosted runner is used for compilation or release builds.
 
-### Runner requirements
+## Runner requirements
 
 The runner needs:
 
-- Network access to Maven Central, NeoForged Maven, Fabric Maven and Mojang resources.
-- Enough disk space for Minecraft artifacts and mappings.
+- Network access to Maven Central, Forge, NeoForge, Fabric, Paper and Mojang resources.
 - Git installed.
-- A writable home directory so `~/.gradle` survives between jobs.
-- Java does not need to be preinstalled permanently; the workflow provisions Temurin 21.
+- Enough disk space for Minecraft artifacts, mappings and transformed dependencies.
+- A writable home directory so `~/.gradle` persists between jobs.
+
+The workflow provisions the required Temurin Java version per target family instead of forcing every target onto one JDK.
+
+## Java/build generations
+
+The matrix currently spans Java 8 through Java 25 depending on Minecraft/platform generation. In particular, the 26.x family builds with Java 25.
+
+Gradle versions are also selected per target because older Forge/Paper builds and current 26.x builds require different Gradle generations.
 
 ## Cache strategy
 
-GitHub Actions cache storage is deliberately disabled because a persistent self-hosted runner already has a local cache and does not need to upload Gradle caches to GitHub.
+GitHub Actions cache storage is deliberately disabled. The self-hosted runner keeps its local `~/.gradle` cache between jobs.
 
-The important persistent directories are managed under the runner user's `~/.gradle`, including dependency and transformed-artifact caches.
+Project settings enable Gradle build caching and parallel execution where supported, and build commands use `--build-cache`.
 
-Project settings also enable:
+Do not routinely delete the runner's Gradle caches unless a dependency/mapping cache is known to be corrupt.
 
-```properties
-org.gradle.parallel=true
-org.gradle.caching=true
-org.gradle.daemon=true
-org.gradle.vfs.watch=true
-```
+## Matrix behavior
 
-Build commands use:
+Each supported platform/version target is an independent Actions job.
 
-```text
---build-cache --parallel
-```
+- One self-hosted runner instance: jobs queue and execute sequentially.
+- Multiple available runner instances: independent matrix jobs can execute concurrently.
 
-The first NeoForge/Fabric build downloads Minecraft artifacts, mappings and loader dependencies. Later builds reuse the local Gradle cache.
+## 26.x layout
 
-Do not routinely delete `~/.gradle/caches` on the self-hosted runner.
-
-## Parallel builds
-
-The workflow uses a matrix, so NeoForge, Fabric and future Forge/Paper/version targets are independent jobs.
-
-- One registered self-hosted runner: jobs queue and execute one at a time.
-- Two or more available self-hosted runners: matrix jobs can build concurrently.
-- Future version targets can be added to the same matrix without changing the common source layout.
-
-For genuine simultaneous 1.16.5-to-current multi-version builds, register multiple self-hosted runner instances that accept the `self-hosted` label.
+Forge, NeoForge, Fabric and Paper 26.x use parameterized projects under `calver/`. The Minecraft version is supplied through the `targetMinecraft` Gradle project property, so 26.1/26.2/26.3 do not require three duplicated source trees per platform.
 
 ## Artifact naming
 
 ```text
-myDash-{platform}-{minecraftVersion}-v{myDashVersion}.jar
+myDash-{platform}-{minecraftVersion}-v2.1.jar
 ```
 
-Current examples:
+Examples:
 
 ```text
+myDash-forge-1.16.5-v2.1.jar
 myDash-neoforge-1.21.1-v2.1.jar
-myDash-fabric-1.21.1-v2.1.jar
+myDash-fabric-26.3-v2.1.jar
+myDash-paper-26.3-v2.1.jar
 ```
 
-Normal branch builds only verify compilation. Tag builds such as `v2.1` rebuild all supported targets and upload the JARs directly to the GitHub Release, avoiding temporary Actions artifact storage.
+Normal branch builds verify compilation. Tag builds rebuild the supported targets and attach release JARs. A one-time `[bundle]` main-branch merge can also upload short-lived Actions artifacts for direct validation/download.

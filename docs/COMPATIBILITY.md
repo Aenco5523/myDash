@@ -1,25 +1,20 @@
-# Compatibility roadmap
+# Compatibility
 
-The first buildable targets are used to validate the shared architecture before expanding the matrix.
+Only targets that have completed the self-hosted CI build are listed as supported.
 
-| Platform | Minecraft | Status |
-|---|---:|---|
-| NeoForge | 1.21.1 | Initial implementation |
-| Fabric | 1.21.1 | Initial implementation |
-| Paper | 1.21.1 | Initial implementation |
-| Forge | 1.16.5 | Build verified |
-| Fabric | 1.16.5 | Build verified |
-| Paper | 1.16.5 | Build verified |
-| Forge | 1.18.2 / 1.19.2 / 1.20.1 | Planned |
-| Fabric | 1.18.2 / 1.19.2 / 1.20.1 | Planned |
-| Paper | 1.18.2 / 1.19.2 / 1.20.1 | Planned |
-| NeoForge | later 1.21.x and 26.x | Planned |
-| Fabric | later 1.21.x and 26.x | Planned |
-| Paper | later 1.21.x and 26.x | Planned |
+| Platform | Minecraft versions | Status |
+| --- | --- | --- |
+| Forge | 1.16.5, 1.18.2, 1.20.1, 26.1, 26.2, 26.3 | Build verified |
+| NeoForge | 1.21.1, 26.1, 26.2, 26.3 | Build verified |
+| Fabric | 1.16.5, 1.18.2, 1.20.1, 1.21.1, 26.1, 26.2, 26.3 | Build verified |
+| Paper | 1.16.5, 1.18.2, 1.20.1, 1.21.1, 26.1, 26.2, 26.3 | Build verified |
 
-Each implemented target gets its own adapter module and CI matrix entry. This avoids pretending an untested version is supported.
+## Policy
 
-| Forge | 26.1 / 26.2 / 26.3 | Initial implementation; CI validation pending |
-| NeoForge | 26.1 / 26.2 / 26.3 | Initial implementation; CI validation pending |
-| Fabric | 26.1 / 26.2 / 26.3 | Initial implementation; CI validation pending |
-| Paper | 26.1 / 26.2 / 26.3 | Initial implementation; CI validation pending |
+A Minecraft/platform combination is not advertised as supported until its adapter compiles successfully in CI.
+
+The shared `mydash-api` and `mydash-core` code is reused across targets, while Minecraft/loader-specific calls remain in thin adapters.
+
+## Future ports
+
+Additional versions can be added when there is a concrete compatibility target. They should follow the same artifact naming scheme and receive their own CI verification before being added to this table.
