@@ -16,4 +16,5 @@ tasks.register('buildSupported') {
     description = 'Builds every currently implemented myDash platform target.'
     dependsOn ':platforms:neoforge-1.21.1:build'
     dependsOn ':platforms:fabric-1.21.1:build'
+    dependsOn ':platforms:paper-1.21.1:build'
 }
