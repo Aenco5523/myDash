@@ -69,6 +69,10 @@ jobs:
             if ($file -match '^calver/') {
               $calver = $true
             }
+
+            if ($file -eq '.github/workflows/build.yml') {
+              $calver = $true
+            }
           }
 
           "modern=$($modern.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
