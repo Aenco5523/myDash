@@ -14,6 +14,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.URLDecoder;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
@@ -38,6 +39,7 @@ final class EmbeddedDashboardServer {
     private final Supplier<Collection<DashboardExtension>> extensions;
     private final ConsoleBuffer consoleBuffer;
     private final ServerPropertiesStore serverProperties;
+    private final SafeFileStore fileStore;
     private final Semaphore consoleStreams = new Semaphore(MAX_CONSOLE_STREAMS);
 
     private HttpServer server;
@@ -56,6 +58,7 @@ final class EmbeddedDashboardServer {
         this.extensions = extensions;
         this.consoleBuffer = consoleBuffer;
         this.serverProperties = new ServerPropertiesStore(bridge.serverDirectory());
+        this.fileStore = new SafeFileStore(bridge.serverDirectory());
     }
 
     void start() throws IOException {
@@ -82,6 +85,8 @@ final class EmbeddedDashboardServer {
         server.createContext("/api/v1/server", this::serverInfo);
         server.createContext("/api/v1/settings", this::settings);
         server.createContext("/api/v1/server-properties", this::serverProperties);
+        server.createContext("/api/v1/files/content", this::fileContent);
+        server.createContext("/api/v1/files", this::files);
         server.createContext("/api/v1/auth/rotate", this::rotateToken);
         server.createContext("/api/v1/console/stream", this::consoleStream);
         server.createContext("/api/v1/console", this::console);
@@ -112,6 +117,68 @@ final class EmbeddedDashboardServer {
         if (!authorize(exchange)) return;
         if (!method(exchange, "GET")) return;
         write(exchange, 200, "application/json; charset=utf-8", Json.server(bridge.snapshot()));
+    }
+
+    private void files(HttpExchange exchange) throws IOException {
+        if (!authorize(exchange)) return;
+        if (!method(exchange, "GET")) return;
+
+        String path = queryParameter(exchange, "path");
+        if (path == null) path = "";
+
+        try {
+            List<FileEntrySnapshot> entries = fileStore.list(path);
+            write(
+                exchange,
+                200,
+                "application/json; charset=utf-8",
+                Json.files(path, entries)
+            );
+        } catch (IOException exception) {
+            write(exchange, 400, "application/json; charset=utf-8", Json.error("invalid_file_path"));
+        }
+    }
+
+    private void fileContent(HttpExchange exchange) throws IOException {
+        if (!authorize(exchange)) return;
+
+        String path = queryParameter(exchange, "path");
+        if (path == null || path.trim().isEmpty()) {
+            write(exchange, 400, "application/json; charset=utf-8", Json.error("missing_file_path"));
+            return;
+        }
+
+        if ("GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+            try {
+                String content = fileStore.readText(path);
+                write(exchange, 200, "text/plain; charset=utf-8", content);
+            } catch (IOException exception) {
+                write(exchange, 400, "application/json; charset=utf-8", Json.error("file_not_editable"));
+            }
+            return;
+        }
+
+        if (!"PUT".equalsIgnoreCase(exchange.getRequestMethod())
+            && !"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+            exchange.getResponseHeaders().set("Allow", "GET, PUT, POST");
+            write(exchange, 405, "application/json; charset=utf-8", Json.error("method_not_allowed"));
+            return;
+        }
+
+        byte[] content;
+        try {
+            content = readBodyBytes(exchange, SafeFileStore.MAX_EDIT_BYTES);
+        } catch (BodyTooLargeException exception) {
+            write(exchange, 413, "application/json; charset=utf-8", Json.error("file_too_large"));
+            return;
+        }
+
+        try {
+            fileStore.writeText(path, content);
+            write(exchange, 200, "application/json; charset=utf-8", Json.actionAccepted("file-save"));
+        } catch (IOException exception) {
+            write(exchange, 400, "application/json; charset=utf-8", Json.error("file_write_rejected"));
+        }
     }
 
     private void serverProperties(HttpExchange exchange) throws IOException {
@@ -614,6 +681,12 @@ final class EmbeddedDashboardServer {
     }
 
     private static String readBody(HttpExchange exchange, int maxBytes) throws IOException, BodyTooLargeException {
+        return new String(readBodyBytes(exchange, maxBytes), StandardCharsets.UTF_8);
+    }
+
+    private static byte[] readBodyBytes(HttpExchange exchange, int maxBytes)
+        throws IOException, BodyTooLargeException {
+
         int contentLength = parseContentLength(exchange.getRequestHeaders().getFirst("Content-Length"));
         if (contentLength > maxBytes) throw new BodyTooLargeException();
 
@@ -628,7 +701,31 @@ final class EmbeddedDashboardServer {
                 output.write(buffer, 0, read);
             }
 
-            return new String(output.toByteArray(), StandardCharsets.UTF_8);
+            return output.toByteArray();
+        }
+    }
+
+    private static String queryParameter(HttpExchange exchange, String key) {
+        String rawQuery = exchange.getRequestURI().getRawQuery();
+        if (rawQuery == null || rawQuery.isEmpty()) return null;
+
+        for (String part : rawQuery.split("&")) {
+            int equals = part.indexOf('=');
+            String rawKey = equals >= 0 ? part.substring(0, equals) : part;
+            if (!key.equals(decodeQuery(rawKey))) continue;
+
+            String rawValue = equals >= 0 ? part.substring(equals + 1) : "";
+            return decodeQuery(rawValue);
+        }
+
+        return null;
+    }
+
+    private static String decodeQuery(String value) {
+        try {
+            return URLDecoder.decode(value, "UTF-8");
+        } catch (Exception exception) {
+            return "";
         }
     }
 
