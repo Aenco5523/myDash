@@ -43,8 +43,8 @@ jobs:
           }
 
           $head = "${{ github.event.pull_request.head.sha }}"
-          $base = git rev-parse "$head~2"
-          $files = git diff --name-only $base $head
+          $base = "${{ github.event.pull_request.base.sha }}"
+          $files = git diff --name-only "$base...$head"
 
           $modern = $false
           $standalone = $false
