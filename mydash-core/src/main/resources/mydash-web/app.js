@@ -436,6 +436,7 @@ byId("auth-form").addEventListener("submit", async event => {
   sessionStorage.setItem(TOKEN_KEY, value);
   byId("admin-token").value = "";
   await refresh();
+  if (currentView === "console") startConsoleStream();
 });
 
 byId("lock-button").addEventListener("click", () => {
@@ -446,8 +447,18 @@ byId("lock-button").addEventListener("click", () => {
 
 byId("clear-console").addEventListener("click", () => {
   const output = byId("console-output");
-  output.replaceChildren();
-  byId("console-empty").hidden = false;
+  output.querySelectorAll(".console-line").forEach(line => line.remove());
+
+  let empty = byId("console-empty");
+  if (!empty) {
+    empty = document.createElement("div");
+    empty.id = "console-empty";
+    empty.className = "console-empty";
+    empty.textContent = "새 로그를 기다리는 중입니다.";
+    output.appendChild(empty);
+  }
+
+  empty.hidden = false;
 });
 
 byId("refresh-players").addEventListener("click", refreshPlayers);
