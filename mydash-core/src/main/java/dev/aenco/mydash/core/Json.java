@@ -1,5 +1,7 @@
 package dev.aenco.mydash.core;
 
+import java.util.List;
+
 final class Json {
     private Json() {}
 
@@ -13,8 +15,26 @@ final class Json {
             + "}";
     }
 
+    static String players(List<PlayerSnapshot> players) {
+        StringBuilder json = new StringBuilder("[");
+        for (int i = 0; i < players.size(); i++) {
+            if (i > 0) json.append(',');
+            PlayerSnapshot player = players.get(i);
+            json.append('{')
+                .append("\"uuid\":\"").append(escape(player.uuid().toString())).append("\",")
+                .append("\"name\":\"").append(escape(player.name())).append("\",")
+                .append("\"operator\":").append(player.operator())
+                .append('}');
+        }
+        return json.append(']').toString();
+    }
+
     static String commandAccepted(String command) {
         return "{\"accepted\":true,\"command\":\"" + escape(command) + "\"}";
+    }
+
+    static String actionAccepted(String action) {
+        return "{\"accepted\":true,\"action\":\"" + escape(action) + "\"}";
     }
 
     static String error(String code) {
@@ -29,20 +49,48 @@ final class Json {
             return cleanCommand(trimmed);
         }
 
-        int key = trimmed.indexOf("\"command\"");
+        return cleanCommand(readStringField(trimmed, "command"));
+    }
+
+    static String readOptionalReason(String body) {
+        if (body == null || body.trim().isEmpty()) return "Kicked by myDash";
+
+        String reason = readStringField(body.trim(), "reason");
+        if (reason == null || reason.trim().isEmpty()) return "Kicked by myDash";
+
+        String clean = reason.trim();
+        if (clean.length() > 256) return null;
+        if (clean.indexOf('\n') >= 0 || clean.indexOf('\r') >= 0) return null;
+        return clean;
+    }
+
+    static String escape(String value) {
+        if (value == null) return "";
+        return value
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+            .replace("\t", "\\t");
+    }
+
+    private static String readStringField(String json, String field) {
+        String marker = "\"" + field + "\"";
+        int key = json.indexOf(marker);
         if (key < 0) return null;
 
-        int colon = trimmed.indexOf(':', key + 9);
+        int colon = json.indexOf(':', key + marker.length());
         if (colon < 0) return null;
 
-        int quote = skipWhitespace(trimmed, colon + 1);
-        if (quote >= trimmed.length() || trimmed.charAt(quote) != '"') return null;
+        int quote = skipWhitespace(json, colon + 1);
+        if (quote >= json.length() || json.charAt(quote) != '"') return null;
 
         StringBuilder value = new StringBuilder();
         boolean escaped = false;
 
-        for (int i = quote + 1; i < trimmed.length(); i++) {
-            char ch = trimmed.charAt(i);
+        for (int i = quote + 1; i < json.length(); i++) {
+            char ch = json.charAt(i);
+
             if (escaped) {
                 switch (ch) {
                     case '"': value.append('"'); break;
@@ -65,23 +113,13 @@ final class Json {
             }
 
             if (ch == '"') {
-                return cleanCommand(value.toString());
+                return value.toString();
             }
 
             value.append(ch);
         }
 
         return null;
-    }
-
-    static String escape(String value) {
-        if (value == null) return "";
-        return value
-            .replace("\\", "\\\\")
-            .replace("\"", "\\\"")
-            .replace("\n", "\\n")
-            .replace("\r", "\\r")
-            .replace("\t", "\\t");
     }
 
     private static int skipWhitespace(String value, int start) {
