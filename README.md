@@ -140,7 +140,7 @@ User-facing information stays in this README. Architecture, API, security, exten
 - [Build and CI](docs/BUILDING.md)
 - [Compatibility](docs/COMPATIBILITY.md)
 
-The Markdown under `docs/wiki/` is a prepared source set for the GitHub Wiki. It is not itself the GitHub Wiki.
+The Markdown under `docs/wiki/` is a prepared source set for the GitHub Wiki. It is not itself the GitHub Wiki. GitHub Wiki publishing is handled separately from the normal repository files.
 
 ## Builds and CI
 
