@@ -210,3 +210,103 @@ Example:
 The write uses a temporary file followed by an atomic replacement when the filesystem supports it. A symlinked `server.properties` file is rejected.
 
 A server restart is required for these settings to be applied consistently.
+
+
+### GET /api/v1/console/stream
+
+Authenticated Server-Sent Events stream for the live Minecraft console.
+
+The browser sends the administrator Bearer token and may resume from the last processed event id:
+
+```text
+GET /api/v1/console/stream?after=123
+Authorization: Bearer mydash_...
+Accept: text/event-stream
+```
+
+Each console record is sent as an SSE `line` event:
+
+```text
+id: 124
+event: line
+data: {"id":124,"timestamp":...,"level":"INFO","logger":"...","message":"..."}
+```
+
+myDash keeps the most recent 750 log records in memory and sends up to 200 recent records when a new stream connects without an `after` value. Up to four concurrent console streams are allowed.
+
+### Player management actions
+
+The following authenticated actions are available for currently connected players:
+
+```text
+POST /api/v1/players/{uuid}/kick
+POST /api/v1/players/{uuid}/ban
+POST /api/v1/players/{uuid}/op
+POST /api/v1/players/{uuid}/deop
+POST /api/v1/players/{uuid}/whitelist-add
+POST /api/v1/players/{uuid}/whitelist-remove
+```
+
+Kick and ban accept an optional JSON reason:
+
+```json
+{
+  "reason": "Managed by myDash"
+}
+```
+
+Player names are validated against the normal Minecraft username character set before command-based management actions are composed.
+
+### GET /api/v1/files
+
+Lists entries inside the myDash file-manager sandbox.
+
+Allowed roots are:
+
+```text
+config/
+mods/
+world/serverconfig/
+server.properties
+ops.json
+whitelist.json
+banned-players.json
+banned-ips.json
+```
+
+Example:
+
+```text
+GET /api/v1/files?path=config
+```
+
+The response reports whether an entry is a directory, symlink, editable text file, or read-only file.
+
+### GET /api/v1/files/content
+
+Reads one editable UTF-8 text file from the allowed sandbox.
+
+```text
+GET /api/v1/files/content?path=config/example.toml
+```
+
+### PUT /api/v1/files/content
+
+Writes one editable UTF-8 text file.
+
+```text
+PUT /api/v1/files/content?path=config/example.toml
+Content-Type: text/plain; charset=utf-8
+```
+
+File-manager protections include:
+
+- path traversal rejection
+- exact allowed-root enforcement
+- symlink traversal rejection
+- binary/NUL-byte rejection
+- UTF-8 validation
+- 1 MiB edit limit
+- no JAR/binary editing
+- automatic backup of existing files under `.mydash-backups/` before replacement
+- atomic file replacement where supported by the filesystem
