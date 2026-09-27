@@ -1,6 +1,9 @@
 package dev.aenco.mydash.core;
 
-import dev.aenco.mydash.api.DashboardExtension;\n\nimport java.util.Collection;\nimport java.util.List;
+import dev.aenco.mydash.api.DashboardExtension;
+
+import java.util.Collection;
+import java.util.List;
 
 final class Json {
     private Json() {}
@@ -13,6 +16,22 @@ final class Json {
             + "\"maxPlayers\":" + snapshot.maxPlayers() + ","
             + "\"uptimeMillis\":" + snapshot.uptimeMillis()
             + "}";
+    }
+
+    static String settings(MyDashConfig config) {
+        return "{"
+            + "\"bindAddress\":\"" + escape(config.bindAddress()) + "\","
+            + "\"port\":" + config.port() + ","
+            + "\"allowRemote\":" + config.allowRemote()
+            + "}";
+    }
+
+    static String settingsUpdated() {
+        return "{\"updated\":true,\"restartRequired\":true}";
+    }
+
+    static String tokenRotated(String token) {
+        return "{\"rotated\":true,\"token\":\"" + escape(token) + "\"}";
     }
 
     static String players(List<PlayerSnapshot> players) {
@@ -32,6 +51,7 @@ final class Json {
     static String extensions(Collection<DashboardExtension> extensions) {
         StringBuilder json = new StringBuilder("[");
         int index = 0;
+
         for (DashboardExtension extension : extensions) {
             if (index++ > 0) json.append(',');
             json.append('{')
@@ -39,13 +59,16 @@ final class Json {
                 .append("\"displayName\":\"").append(escape(extension.displayName())).append("\",")
                 .append("\"route\":\"").append(escape(extension.route())).append("\",")
                 .append("\"permissions\":[");
+
             int permissionIndex = 0;
             for (String permission : extension.permissions()) {
                 if (permissionIndex++ > 0) json.append(',');
                 json.append("\"").append(escape(permission)).append("\"");
             }
+
             json.append("]}");
         }
+
         return json.append(']').toString();
     }
 
@@ -65,10 +88,7 @@ final class Json {
         if (body == null) return null;
         String trimmed = body.trim();
 
-        if (!trimmed.startsWith("{")) {
-            return cleanCommand(trimmed);
-        }
-
+        if (!trimmed.startsWith("{")) return cleanCommand(trimmed);
         return cleanCommand(readStringField(trimmed, "command"));
     }
 
@@ -84,17 +104,9 @@ final class Json {
         return clean;
     }
 
-    static String escape(String value) {
-        if (value == null) return "";
-        return value
-            .replace("\\", "\\\\")
-            .replace("\"", "\\\"")
-            .replace("\n", "\\n")
-            .replace("\r", "\\r")
-            .replace("\t", "\\t");
-    }
+    static String readStringField(String json, String field) {
+        if (json == null) return null;
 
-    private static String readStringField(String json, String field) {
         String marker = "\"" + field + "\"";
         int key = json.indexOf(marker);
         if (key < 0) return null;
@@ -132,28 +144,76 @@ final class Json {
                 continue;
             }
 
-            if (ch == '"') {
-                return value.toString();
-            }
-
+            if (ch == '"') return value.toString();
             value.append(ch);
         }
 
         return null;
     }
 
+    static Integer readIntField(String json, String field) {
+        String raw = readPrimitiveField(json, field);
+        if (raw == null) return null;
+
+        try {
+            return Integer.valueOf(raw);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
+    static Boolean readBooleanField(String json, String field) {
+        String raw = readPrimitiveField(json, field);
+        if ("true".equals(raw)) return Boolean.TRUE;
+        if ("false".equals(raw)) return Boolean.FALSE;
+        return null;
+    }
+
+    static String escape(String value) {
+        if (value == null) return "";
+        return value
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+            .replace("\t", "\\t");
+    }
+
+    private static String readPrimitiveField(String json, String field) {
+        if (json == null) return null;
+
+        String marker = "\"" + field + "\"";
+        int key = json.indexOf(marker);
+        if (key < 0) return null;
+
+        int colon = json.indexOf(':', key + marker.length());
+        if (colon < 0) return null;
+
+        int start = skipWhitespace(json, colon + 1);
+        int end = start;
+
+        while (end < json.length()) {
+            char ch = json.charAt(end);
+            if (ch == ',' || ch == '}') break;
+            end++;
+        }
+
+        if (end <= start) return null;
+        return json.substring(start, end).trim();
+    }
+
     private static int skipWhitespace(String value, int start) {
         int index = start;
-        while (index < value.length() && Character.isWhitespace(value.charAt(index))) {
-            index++;
-        }
+        while (index < value.length() && Character.isWhitespace(value.charAt(index))) index++;
         return index;
     }
 
     private static String cleanCommand(String command) {
         if (command == null) return null;
+
         String clean = command.trim();
         while (clean.startsWith("/")) clean = clean.substring(1).trim();
+
         if (clean.isEmpty() || clean.length() > 2048) return null;
         if (clean.indexOf('\n') >= 0 || clean.indexOf('\r') >= 0) return null;
         return clean;
