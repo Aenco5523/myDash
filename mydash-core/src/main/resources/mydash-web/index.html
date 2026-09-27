@@ -29,9 +29,9 @@
         <div><strong>myDash</strong><small>Server Console</small></div>
       </div>
       <nav>
-        <a class="nav active" href="#"><span>⌂</span>개요</a>
-        <a class="nav disabled" href="#"><span>›_</span>실시간 콘솔 <em>beta</em></a>
-        <a class="nav disabled" href="#"><span>♙</span>플레이어 관리 <em>soon</em></a>
+        <a class="nav active" href="#overview" data-view-link="overview"><span>⌂</span>개요</a>
+        <a class="nav" href="#console" data-view-link="console"><span>›_</span>실시간 콘솔 <em>beta</em></a>
+        <a class="nav" href="#players" data-view-link="players"><span>♙</span>플레이어 관리</a>
         <a class="nav disabled" href="#"><span>□</span>모드 및 파일 <em>soon</em></a>
         <a class="nav disabled" href="#"><span>⚙</span>설정 <em>soon</em></a>
       </nav>
@@ -42,77 +42,132 @@
     </aside>
 
     <main>
-      <header>
-        <div>
-          <p class="eyebrow">SERVER OVERVIEW</p>
-          <h1>서버 개요</h1>
-          <p>서버 상태와 관리 기능을 한눈에 확인하세요.</p>
-        </div>
-        <div class="header-actions">
-          <button class="ghost-button" id="lock-button" type="button">잠금</button>
-          <div class="status"><span class="pulse"></span><b>온라인</b></div>
-        </div>
-      </header>
-
-      <section class="hero">
-        <div>
-          <span class="chip" id="platform">연결 중</span>
-          <h2 id="mc-version">Minecraft</h2>
-          <p>myDash가 서버 런타임과 연결되어 있습니다.</p>
-        </div>
-        <div class="hero-icon">◈</div>
-      </section>
-
-      <section class="grid">
-        <article class="card">
-          <span class="label">접속 플레이어</span>
-          <strong><span id="players">–</span> <small>/ <span id="max-players">–</span></small></strong>
-          <div class="bar"><i id="player-bar"></i></div>
-        </article>
-        <article class="card">
-          <span class="label">업타임</span>
-          <strong id="uptime">–</strong>
-          <p>myDash가 감지한 서버 실행 시간</p>
-        </article>
-        <article class="card">
-          <span class="label">API</span>
-          <strong>v1</strong>
-          <p><code>/api/v1</code> · Bearer 인증</p>
-        </article>
-      </section>
-
-      <section class="panel command-panel">
-        <div class="command-copy">
-          <p class="eyebrow">SERVER COMMAND</p>
-          <h3>빠른 명령 실행</h3>
-          <p>Minecraft 서버 스레드에서 안전하게 실행됩니다.</p>
-        </div>
-        <form class="command-form" id="command-form">
-          <div class="command-input-wrap">
-            <span>&gt;</span>
-            <input id="command-input" type="text" maxlength="2048" autocomplete="off"
-                   placeholder="say Hello from myDash" aria-label="서버 명령">
+      <section class="view active-view" id="view-overview" data-view="overview">
+        <header>
+          <div>
+            <p class="eyebrow">SERVER OVERVIEW</p>
+            <h1>서버 개요</h1>
+            <p>서버 상태와 관리 기능을 한눈에 확인하세요.</p>
           </div>
-          <button type="submit">실행</button>
-        </form>
-        <p class="command-result" id="command-result"></p>
+          <div class="header-actions">
+            <button class="ghost-button" id="lock-button" type="button">잠금</button>
+            <div class="status"><span class="pulse"></span><b>온라인</b></div>
+          </div>
+        </header>
+
+        <section class="hero">
+          <div>
+            <span class="chip" id="platform">연결 중</span>
+            <h2 id="mc-version">Minecraft</h2>
+            <p>myDash가 서버 런타임과 연결되어 있습니다.</p>
+          </div>
+          <div class="hero-icon">◈</div>
+        </section>
+
+        <section class="grid">
+          <article class="card">
+            <span class="label">접속 플레이어</span>
+            <strong><span id="players">–</span> <small>/ <span id="max-players">–</span></small></strong>
+            <div class="bar"><i id="player-bar"></i></div>
+          </article>
+          <article class="card">
+            <span class="label">업타임</span>
+            <strong id="uptime">–</strong>
+            <p>myDash가 감지한 서버 실행 시간</p>
+          </article>
+          <article class="card">
+            <span class="label">API</span>
+            <strong>v1</strong>
+            <p><code>/api/v1</code> · Bearer 인증</p>
+          </article>
+        </section>
+
+        <section class="panel">
+          <div>
+            <p class="eyebrow">MYDASH CORE</p>
+            <h3>멀티로더 공통 코어</h3>
+            <p>동일한 인증·API·웹 UI를 NeoForge와 Fabric 어댑터가 공유합니다.</p>
+          </div>
+          <div class="tags">
+            <span>NeoForge 1.21.1</span>
+            <span>Fabric 1.21.1</span>
+            <span>Self-hosted</span>
+          </div>
+        </section>
       </section>
 
-      <section class="panel">
-        <div>
-          <p class="eyebrow">MYDASH CORE</p>
-          <h3>멀티로더 공통 코어</h3>
-          <p>동일한 인증·API·웹 UI를 NeoForge와 Fabric 어댑터가 공유합니다.</p>
-        </div>
-        <div class="tags">
-          <span>NeoForge 1.21.1</span>
-          <span>Fabric 1.21.1</span>
-          <span>Self-hosted</span>
-        </div>
+      <section class="view" id="view-console" data-view="console" hidden>
+        <header>
+          <div>
+            <p class="eyebrow">LIVE CONSOLE</p>
+            <h1>실시간 콘솔</h1>
+            <p>현재는 안전한 명령 실행 기능부터 연결되어 있습니다.</p>
+          </div>
+          <div class="status"><span class="pulse"></span><b>명령 API 연결됨</b></div>
+        </header>
+
+        <section class="console-shell">
+          <div class="console-toolbar">
+            <div>
+              <strong>Server Console</strong>
+              <small>Minecraft 서버 스레드로 전달</small>
+            </div>
+            <span class="chip">BETA</span>
+          </div>
+          <div class="console-output" id="console-output">
+            <div class="console-line"><span>myDash</span><p>실시간 로그 스트리밍은 다음 단계에서 연결됩니다.</p></div>
+            <div class="console-line"><span>system</span><p>아래 입력창에서 서버 명령을 실행할 수 있습니다.</p></div>
+          </div>
+          <form class="command-form console-command" id="command-form">
+            <div class="command-input-wrap">
+              <span>&gt;</span>
+              <input id="command-input" type="text" maxlength="2048" autocomplete="off"
+                     placeholder="say Hello from myDash" aria-label="서버 명령">
+            </div>
+            <button type="submit">실행</button>
+          </form>
+          <p class="command-result" id="command-result"></p>
+        </section>
+      </section>
+
+      <section class="view" id="view-players" data-view="players" hidden>
+        <header>
+          <div>
+            <p class="eyebrow">PLAYER MANAGEMENT</p>
+            <h1>플레이어 목록 및 제재 관리</h1>
+            <p>현재 접속 중인 플레이어를 확인하고 관리합니다.</p>
+          </div>
+          <button class="ghost-button" id="refresh-players" type="button">새로고침</button>
+        </header>
+
+        <section class="player-stats">
+          <article class="card">
+            <span class="label">현재 접속자</span>
+            <strong id="player-count-detail">–</strong>
+            <p>실시간 접속 목록</p>
+          </article>
+          <article class="card">
+            <span class="label">관리자(OP)</span>
+            <strong id="operator-count">–</strong>
+            <p>현재 접속자 기준</p>
+          </article>
+        </section>
+
+        <section class="player-panel">
+          <div class="player-panel-head">
+            <div>
+              <p class="eyebrow">ONLINE PLAYERS</p>
+              <h3>접속 중인 플레이어</h3>
+            </div>
+            <span class="chip" id="player-list-status">불러오는 중</span>
+          </div>
+          <div class="player-list" id="player-list"></div>
+          <div class="empty-state" id="player-empty" hidden>현재 접속 중인 플레이어가 없습니다.</div>
+        </section>
       </section>
 
       <p class="error" id="error"></p>
-    </main>
+</main>
   </div>
 
   <script src="/app.js"></script>
