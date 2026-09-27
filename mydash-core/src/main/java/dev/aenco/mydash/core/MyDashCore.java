@@ -14,6 +14,7 @@ import java.util.List;
 public final class MyDashCore implements MyDashApi {
     private final ServerBridge bridge;
     private final Path configPath;
+    private final ConsoleBuffer consoleBuffer = new ConsoleBuffer();
     private final List<DashboardExtension> extensions = new ArrayList<DashboardExtension>();
     private EmbeddedDashboardServer webServer;
 
@@ -39,7 +40,13 @@ public final class MyDashCore implements MyDashApi {
 
         MyDash.bind(this);
         try {
-            webServer = new EmbeddedDashboardServer(bridge, config, security, this::extensions);
+            webServer = new EmbeddedDashboardServer(
+                bridge,
+                config,
+                security,
+                this::extensions,
+                consoleBuffer
+            );
             webServer.start();
         } catch (IOException | RuntimeException exception) {
             webServer = null;
@@ -48,22 +55,31 @@ public final class MyDashCore implements MyDashApi {
         }
     }
 
+    public void publishConsoleLine(String level, String logger, String message) {
+        consoleBuffer.publish(level, logger, message);
+    }
+
     public synchronized void stop() {
+        consoleBuffer.close();
+
         if (webServer != null) {
             webServer.stop();
             webServer = null;
         }
+
         MyDash.unbind(this);
     }
 
     @Override
     public synchronized void registerExtension(DashboardExtension extension) {
         if (extension == null) throw new IllegalArgumentException("extension");
+
         for (DashboardExtension existing : extensions) {
             if (existing.id().equals(extension.id())) {
                 throw new IllegalArgumentException("Extension already registered: " + extension.id());
             }
         }
+
         extensions.add(extension);
     }
 
