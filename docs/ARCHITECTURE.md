@@ -34,5 +34,5 @@ Browser
 
 Examples:
 
-- `myDash-neoforge-1.21.1-v2.1.0.jar`
-- `myDash-fabric-1.21.1-v2.1.0.jar`
+- `myDash-neoforge-1.21.1-v2.1.jar`
+- `myDash-fabric-1.21.1-v2.1.jar`
