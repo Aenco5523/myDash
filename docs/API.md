@@ -171,3 +171,42 @@ Example response:
 ```
 
 The returned plaintext token is not written to disk by myDash. Store it securely when rotating.
+
+
+### GET /api/v1/server-properties
+
+Returns the curated `server.properties` settings currently stored on disk.
+
+Fields:
+
+- `motd`
+- `serverPort`
+- `maxPlayers`
+- `onlineMode`
+- `whiteList`
+- `difficulty`
+- `gamemode`
+- `hardcore`
+
+### POST /api/v1/server-properties
+
+Updates only the curated settings above and preserves the other property values.
+
+Example:
+
+```json
+{
+  "motd": "My Minecraft Server",
+  "serverPort": 25565,
+  "maxPlayers": 20,
+  "onlineMode": true,
+  "whiteList": false,
+  "difficulty": "normal",
+  "gamemode": "survival",
+  "hardcore": false
+}
+```
+
+The write uses a temporary file followed by an atomic replacement when the filesystem supports it. A symlinked `server.properties` file is rejected.
+
+A server restart is required for these settings to be applied consistently.
