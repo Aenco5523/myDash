@@ -121,3 +121,53 @@ Request:
 ```
 
 The reason is optional and limited to 256 characters. The kick is executed on the Minecraft server thread.
+
+
+### GET /api/v1/settings
+
+Returns the current embedded web server configuration without authentication secrets.
+
+Example:
+
+```json
+{
+  "bindAddress": "127.0.0.1",
+  "port": 8765,
+  "allowRemote": false
+}
+```
+
+### POST /api/v1/settings
+
+Stores new embedded web server settings.
+
+Request:
+
+```json
+{
+  "bindAddress": "127.0.0.1",
+  "port": 8765,
+  "allowRemote": false
+}
+```
+
+Changing these settings requires a Minecraft server restart before the listener changes.
+
+A non-loopback bind address requires `allowRemote=true`.
+
+### POST /api/v1/auth/rotate
+
+Rotates the administrator token.
+
+The request must be authenticated with the current administrator token. The old token becomes invalid immediately.
+
+Example response:
+
+```json
+{
+  "rotated": true,
+  "token": "mydash_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+}
+```
+
+The returned plaintext token is not written to disk by myDash. Store it securely when rotating.
