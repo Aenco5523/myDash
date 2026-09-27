@@ -125,6 +125,16 @@ jobs:
       - name: Build
         run: gradle ${{ matrix.task }} --build-cache --parallel --stacktrace
 
+      - name: Upload JAR bundle
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[bundle]')
+        uses: actions/upload-artifact@v4
+        with:
+          name: "myDash-${{ matrix.name }}"
+          path: platforms/**/build/libs/myDash-*.jar
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
   standalone:
     needs: changes
     if: needs.changes.outputs.standalone == 'true'
@@ -203,6 +213,16 @@ jobs:
       - name: Build ${{ matrix.name }}
         run: gradle -p ${{ matrix.path }} build --build-cache --stacktrace
 
+      - name: Upload JAR bundle
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[bundle]')
+        uses: actions/upload-artifact@v4
+        with:
+          name: "myDash-${{ matrix.name }}"
+          path: "${{ matrix.path }}/build/libs/myDash-*.jar"
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
   calver:
     needs: changes
     if: needs.changes.outputs.calver == 'true'
@@ -255,6 +275,16 @@ jobs:
           ORG_GRADLE_PROJECT_targetMinecraft: "${{ matrix.mc }}"
           ORG_GRADLE_PROJECT_loomVersion: "${{ matrix.loom }}"
         run: gradle -p ${{ matrix.path }} build --build-cache --stacktrace
+
+      - name: Upload JAR bundle
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[bundle]')
+        uses: actions/upload-artifact@v4
+        with:
+          name: "myDash-${{ matrix.name }}"
+          path: "${{ matrix.path }}/build/libs/myDash-*-${{ matrix.mc }}-v2.1.jar"
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
