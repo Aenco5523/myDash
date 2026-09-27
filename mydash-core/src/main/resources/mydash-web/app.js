@@ -3,6 +3,10 @@ const TOKEN_KEY = "mydash.adminToken";
 
 let currentView = "overview";
 let extensionSignature = "";
+let consoleAbortController = null;
+let consoleReconnectTimer = null;
+let consoleLastId = 0;
+const MAX_CONSOLE_DOM_LINES = 500;
 
 function duration(ms) {
   const seconds = Math.max(0, Math.floor(ms / 1000));
@@ -43,6 +47,7 @@ async function api(path, options) {
 
   if (response.status === 401) {
     sessionStorage.removeItem(TOKEN_KEY);
+    stopConsoleStream();
     showLogin("토큰이 올바르지 않거나 더 이상 사용할 수 없습니다.");
     throw new Error("unauthorized");
   }
@@ -73,6 +78,12 @@ function selectView(name) {
   });
 
   setActiveNav('[data-view-link="' + name + '"]');
+
+  if (name === "console") {
+    startConsoleStream();
+  } else {
+    stopConsoleStream();
+  }
 
   if (name === "players") refreshPlayers();
   if (name === "server-config") refreshServerProperties();
@@ -429,7 +440,14 @@ byId("auth-form").addEventListener("submit", async event => {
 
 byId("lock-button").addEventListener("click", () => {
   sessionStorage.removeItem(TOKEN_KEY);
+  stopConsoleStream();
   showLogin();
+});
+
+byId("clear-console").addEventListener("click", () => {
+  const output = byId("console-output");
+  output.replaceChildren();
+  byId("console-empty").hidden = false;
 });
 
 byId("refresh-players").addEventListener("click", refreshPlayers);
@@ -561,6 +579,184 @@ byId("rotate-token").addEventListener("click", async () => {
   }
 });
 
+function setConsoleStreamStatus(text, active) {
+  byId("console-stream-status").textContent = text;
+  byId("console-stream-pulse").classList.toggle("inactive", !active);
+}
+
+function stopConsoleStream() {
+  if (consoleReconnectTimer !== null) {
+    clearTimeout(consoleReconnectTimer);
+    consoleReconnectTimer = null;
+  }
+
+  if (consoleAbortController !== null) {
+    consoleAbortController.abort();
+    consoleAbortController = null;
+  }
+
+  if (currentView !== "console") {
+    setConsoleStreamStatus("연결 대기", false);
+  }
+}
+
+function scheduleConsoleReconnect() {
+  if (currentView !== "console" || !token()) return;
+  if (consoleReconnectTimer !== null) return;
+
+  setConsoleStreamStatus("재연결 중", false);
+  consoleReconnectTimer = setTimeout(() => {
+    consoleReconnectTimer = null;
+    startConsoleStream();
+  }, 1500);
+}
+
+async function startConsoleStream() {
+  if (currentView !== "console" || !token()) return;
+
+  stopConsoleStream();
+  setConsoleStreamStatus("연결 중", false);
+
+  const controller = new AbortController();
+  consoleAbortController = controller;
+
+  const suffix = consoleLastId > 0
+    ? "?after=" + encodeURIComponent(String(consoleLastId))
+    : "";
+
+  try {
+    const response = await fetch("/api/v1/console/stream" + suffix, {
+      method: "GET",
+      headers: {
+        Authorization: "Bearer " + token(),
+        Accept: "text/event-stream"
+      },
+      cache: "no-store",
+      signal: controller.signal
+    });
+
+    if (response.status === 401) {
+      sessionStorage.removeItem(TOKEN_KEY);
+      showLogin("토큰이 올바르지 않거나 더 이상 사용할 수 없습니다.");
+      return;
+    }
+
+    if (!response.ok || !response.body) {
+      throw new Error("HTTP " + response.status);
+    }
+
+    setConsoleStreamStatus("실시간 연결됨", true);
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let pending = "";
+
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+
+      pending += decoder.decode(chunk.value, { stream: true });
+      pending = consumeSseFrames(pending);
+    }
+
+    pending += decoder.decode();
+    consumeSseFrames(pending);
+
+    if (!controller.signal.aborted) {
+      scheduleConsoleReconnect();
+    }
+  } catch (error) {
+    if (error.name !== "AbortError") {
+      scheduleConsoleReconnect();
+    }
+  } finally {
+    if (consoleAbortController === controller) {
+      consoleAbortController = null;
+    }
+  }
+}
+
+function consumeSseFrames(buffer) {
+  let separator;
+
+  while ((separator = buffer.indexOf("\n\n")) >= 0) {
+    const frame = buffer.slice(0, separator);
+    buffer = buffer.slice(separator + 2);
+
+    if (!frame || frame.startsWith(":")) continue;
+
+    let eventId = 0;
+    let eventName = "";
+    const dataParts = [];
+
+    frame.split("\n").forEach(line => {
+      if (line.startsWith("id:")) {
+        eventId = Number(line.slice(3).trim()) || 0;
+      } else if (line.startsWith("event:")) {
+        eventName = line.slice(6).trim();
+      } else if (line.startsWith("data:")) {
+        dataParts.push(line.slice(5).trimStart());
+      }
+    });
+
+    if (eventName !== "line" || dataParts.length === 0) continue;
+    if (eventId > 0 && eventId <= consoleLastId) continue;
+
+    try {
+      const log = JSON.parse(dataParts.join("\n"));
+      appendServerConsoleLine(log);
+      if (eventId > 0) consoleLastId = eventId;
+    } catch (ignored) {
+      // Ignore malformed stream records and continue with the next event.
+    }
+  }
+
+  return buffer;
+}
+
+function appendServerConsoleLine(log) {
+  const output = byId("console-output");
+  const empty = byId("console-empty");
+  if (empty) empty.hidden = true;
+
+  const line = document.createElement("div");
+  line.className = "console-line server-log";
+
+  const meta = document.createElement("span");
+  meta.className = "console-level console-level-" +
+    String(log.level || "info").toLowerCase();
+
+  const date = new Date(Number(log.timestamp) || Date.now());
+  const time = date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+
+  meta.textContent = time + " " + String(log.level || "INFO");
+
+  const body = document.createElement("div");
+  body.className = "console-message";
+
+  const logger = document.createElement("small");
+  logger.textContent = String(log.logger || "Minecraft");
+
+  const message = document.createElement("pre");
+  message.textContent = String(log.message || "");
+
+  body.append(logger, message);
+  line.append(meta, body);
+  output.appendChild(line);
+
+  while (output.querySelectorAll(".console-line").length > MAX_CONSOLE_DOM_LINES) {
+    const first = output.querySelector(".console-line");
+    if (!first) break;
+    first.remove();
+  }
+
+  output.scrollTop = output.scrollHeight;
+}
+
 byId("command-form").addEventListener("submit", async event => {
   event.preventDefault();
 
@@ -595,18 +791,25 @@ byId("command-form").addEventListener("submit", async event => {
 });
 
 function appendConsole(command) {
+  const output = byId("console-output");
+  const empty = byId("console-empty");
+  if (empty) empty.hidden = true;
+
   const line = document.createElement("div");
-  line.className = "console-line";
+  line.className = "console-line local-command";
 
   const source = document.createElement("span");
-  source.textContent = "admin";
+  source.className = "console-level";
+  source.textContent = "ADMIN";
 
-  const message = document.createElement("p");
+  const body = document.createElement("div");
+  body.className = "console-message";
+
+  const message = document.createElement("pre");
   message.textContent = "> " + command;
 
-  line.append(source, message);
-
-  const output = byId("console-output");
+  body.appendChild(message);
+  line.append(source, body);
   output.appendChild(line);
   output.scrollTop = output.scrollHeight;
 }
