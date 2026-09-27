@@ -18,6 +18,7 @@ Self-hosted Minecraft server management dashboard with a shared API and multi-lo
 - online player list
 - player kick action
 - web server settings
+- curated `server.properties` management
 - first-run administrator token
 - administrator token rotation
 - versioned REST API under `/api/v1`
