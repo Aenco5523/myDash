@@ -838,6 +838,7 @@ final class EmbeddedDashboardServer {
             if (path.endsWith(".js")) return "text/javascript; charset=utf-8";
             if (path.endsWith(".svg")) return "image/svg+xml";
             if (path.endsWith(".png")) return "image/png";
+            if (path.endsWith(".jpg") || path.endsWith(".jpeg")) return "image/jpeg";
             return "text/html; charset=utf-8";
         }
     }
