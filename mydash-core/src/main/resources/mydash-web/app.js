@@ -302,6 +302,7 @@ async function refreshFiles(path) {
       fileCurrentPath ? "/" + fileCurrentPath : "/";
 
     list.replaceChildren();
+    empty.textContent = "표시할 파일이 없습니다.";
     empty.hidden = Array.isArray(data.entries) && data.entries.length > 0;
 
     (data.entries || []).forEach(entry => {
