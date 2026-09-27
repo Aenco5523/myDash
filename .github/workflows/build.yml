@@ -82,7 +82,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Repair corrupted Maven toolchain metadata
-        shell: pwsh
+        shell: powershell
         run: |
           $toolchains = Join-Path $HOME ".m2\toolchains.xml"
           if (Test-Path $toolchains) {
