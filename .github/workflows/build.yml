@@ -20,10 +20,8 @@ jobs:
         include:
           - name: NeoForge 1.21.1
             task: :platforms:neoforge-1.21.1:build
-            artifact: platforms/neoforge-1.21.1/build/libs/myDash-neoforge-1.21.1-v2.1.0.jar
           - name: Fabric 1.21.1
             task: :platforms:fabric-1.21.1:build
-            artifact: platforms/fabric-1.21.1/build/libs/myDash-fabric-1.21.1-v2.1.0.jar
 
     steps:
       - uses: actions/checkout@v4
@@ -40,23 +38,32 @@ jobs:
       - name: Build
         run: gradle ${{ matrix.task }} --stacktrace
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.name }}
-          path: ${{ matrix.artifact }}
-          if-no-files-found: error
-
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: release
-          merge-multiple: true
+      - uses: actions/checkout@v4
 
-      - name: Upload JARs to GitHub Release
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.8"
+
+      - name: Build release JARs
+        run: gradle buildSupported --stacktrace
+
+      - name: Create release if needed
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${GITHUB_REF_NAME}" release/*.jar --clobber
+        run: gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1 || gh release create "${GITHUB_REF_NAME}" --generate-notes
+
+      - name: Upload JARs directly to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${GITHUB_REF_NAME}"             platforms/neoforge-1.21.1/build/libs/myDash-neoforge-1.21.1-v2.1.0.jar             platforms/fabric-1.21.1/build/libs/myDash-fabric-1.21.1-v2.1.0.jar             --clobber
