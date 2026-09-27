@@ -27,7 +27,8 @@ public final class MyDashFabric implements ModInitializer {
     public MyDashFabric() {
     }
 
-    @Override\n    public void onInitialize() {
+    @Override
+    public void onInitialize() {
         ServerLifecycleEvents.SERVER_STARTED.register(this::start);
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> stop());
     }
