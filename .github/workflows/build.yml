@@ -212,7 +212,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: "Forge 26.1", path: "calver/forge", mc: "26.1", gradle: "8.12.1", loom: "unused" }
+          - { name: "Forge 26.1", path: "calver/forge", mc: "26.1", gradle: "9.4.0", loom: "unused" }
           - { name: "Forge 26.2", path: "calver/forge", mc: "26.2", gradle: "9.5.0", loom: "unused" }
           - { name: "Forge 26.3", path: "calver/forge", mc: "26.3", gradle: "9.7.1", loom: "unused" }
           - { name: "NeoForge 26.1", path: "calver/neoforge", mc: "26.1", gradle: "9.2.1", loom: "unused" }
@@ -308,15 +308,30 @@ jobs:
         shell: powershell
         run: |
           $targets = @(
-            @("calver/forge","26.1"), @("calver/forge","26.2"), @("calver/forge","26.3"),
-            @("calver/neoforge","26.1"), @("calver/neoforge","26.2"), @("calver/neoforge","26.3"),
-            @("calver/fabric","26.1"), @("calver/fabric","26.2"), @("calver/fabric","26.3"),
-            @("calver/paper","26.1"), @("calver/paper","26.2"), @("calver/paper","26.3")
+            @{ path="calver/forge"; mc="26.1"; loom="unused" },
+            @{ path="calver/forge"; mc="26.2"; loom="unused" },
+            @{ path="calver/forge"; mc="26.3"; loom="unused" },
+            @{ path="calver/neoforge"; mc="26.1"; loom="unused" },
+            @{ path="calver/neoforge"; mc="26.2"; loom="unused" },
+            @{ path="calver/neoforge"; mc="26.3"; loom="unused" },
+            @{ path="calver/fabric"; mc="26.1"; loom="1.15-SNAPSHOT" },
+            @{ path="calver/fabric"; mc="26.2"; loom="1.17-SNAPSHOT" },
+            @{ path="calver/fabric"; mc="26.3"; loom="1.17-SNAPSHOT" },
+            @{ path="calver/paper"; mc="26.1"; loom="unused" },
+            @{ path="calver/paper"; mc="26.2"; loom="unused" },
+            @{ path="calver/paper"; mc="26.3"; loom="unused" }
           )
+
           foreach ($target in $targets) {
-            gradle -p $target[0] build "-PtargetMinecraft=$($target[1])" --build-cache --stacktrace
+            $env:ORG_GRADLE_PROJECT_targetMinecraft = $target.mc
+            $env:ORG_GRADLE_PROJECT_loomVersion = $target.loom
+
+            gradle -p $target.path build --build-cache --stacktrace
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
+
+          Remove-Item Env:ORG_GRADLE_PROJECT_targetMinecraft -ErrorAction SilentlyContinue
+          Remove-Item Env:ORG_GRADLE_PROJECT_loomVersion -ErrorAction SilentlyContinue
 
       - name: Switch back to Java 21
         uses: actions/setup-java@v6
