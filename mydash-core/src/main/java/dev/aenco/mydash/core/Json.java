@@ -89,6 +89,16 @@ final class Json {
         return json.append(']').toString();
     }
 
+    static String consoleLine(ConsoleLine line) {
+        return "{"
+            + "\"id\":" + line.id() + ","
+            + "\"timestamp\":" + line.timestamp() + ","
+            + "\"level\":\"" + escape(line.level()) + "\","
+            + "\"logger\":\"" + escape(line.logger()) + "\","
+            + "\"message\":\"" + escape(line.message()) + "\""
+            + "}";
+    }
+
     static String commandAccepted(String command) {
         return "{\"accepted\":true,\"command\":\"" + escape(command) + "\"}";
     }
