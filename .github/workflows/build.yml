@@ -10,10 +10,13 @@ on:
 permissions:
   contents: write
 
+# Build exclusively on the owner's self-hosted runner.
+# The runner's persistent ~/.gradle directory is intentionally reused as the
+# dependency/mapping cache instead of GitHub Actions artifact/cache storage.
 jobs:
   build:
     name: ${{ matrix.name }}
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     strategy:
       fail-fast: false
       matrix:
@@ -26,43 +29,54 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
 
-      - uses: gradle/actions/setup-gradle@v4
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.8"
+          # Self-hosted runners keep ~/.gradle between jobs/runs.
+          # Avoid GitHub-hosted cache quota and use the persistent local cache.
+          cache-disabled: true
+          validate-wrappers: true
 
       - name: Build
-        run: gradle ${{ matrix.task }} --stacktrace
+        run: gradle ${{ matrix.task }} --build-cache --parallel --stacktrace
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
+
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
 
-      - uses: gradle/actions/setup-gradle@v4
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.8"
+          cache-disabled: true
+          validate-wrappers: true
 
-      - name: Build release JARs
-        run: gradle buildSupported --stacktrace
+      - name: Build all release JARs
+        run: gradle buildSupported --build-cache --parallel --stacktrace
 
       - name: Create release if needed
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1 || gh release create "${GITHUB_REF_NAME}" --generate-notes
 
-      - name: Upload JARs directly to the release
+      - name: Upload JARs directly to GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
