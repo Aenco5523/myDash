@@ -9,415 +9,233 @@
 <body>
   <div class="auth-gate" id="auth-gate" hidden>
     <form class="auth-card" id="auth-form">
-      <div class="brand-mark large">M</div>
+      <div class="auth-logo">M</div>
       <p class="eyebrow">MYDASH ADMIN</p>
       <h2>관리자 인증</h2>
       <p class="auth-copy">서버 콘솔에 최초 1회 표시된 관리자 토큰을 입력하세요.</p>
       <label for="admin-token">관리자 토큰</label>
-      <input id="admin-token" name="token" type="password" autocomplete="current-password"
-             placeholder="mydash_••••••••••••••••" required>
-      <button type="submit">myDash 열기</button>
+      <input id="admin-token" name="token" type="password" autocomplete="current-password" placeholder="mydash_••••••••••••••••" required>
+      <button class="primary-button auth-submit" type="submit">myDash 열기</button>
       <p class="auth-error" id="auth-error"></p>
       <small>토큰은 이 브라우저 탭의 세션에만 보관됩니다.</small>
     </form>
   </div>
 
+  <header class="topbar">
+    <div class="top-brand">
+      <span class="brand-logo" aria-hidden="true">
+        <svg viewBox="0 0 32 32">
+          <rect x="2.5" y="2.5" width="27" height="27" rx="4"></rect>
+          <path d="M8 12.5 16 8l8 4.5v8L16 25l-8-4.5z"></path>
+          <path d="m8 12.5 8 4.5 8-4.5M16 17v8"></path>
+          <circle cx="21.2" cy="18.3" r="3.1"></circle>
+        </svg>
+      </span>
+      <strong>myDash</strong>
+    </div>
+    <div class="server-controls" aria-label="Server controls">
+      <button class="control-button start" type="button" disabled><span>▶</span> 시작</button>
+      <button class="control-button restart" type="button" disabled><span>↻</span> 재시작</button>
+      <button class="control-button stop" type="button" disabled><span>□</span> 종료</button>
+    </div>
+    <div class="profile-area">
+      <button class="top-lock" id="lock-button" type="button">⌁ <span>잠금</span></button>
+      <span class="profile-avatar">A</span>
+      <span class="profile-copy"><strong>Admin</strong><small>서버 관리자</small></span>
+    </div>
+  </header>
+
   <div class="shell" id="app-shell">
     <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-mark">M</div>
-        <div><strong>myDash</strong><small>Server Console</small></div>
-      </div>
       <nav>
-        <a class="nav active" href="#overview" data-view-link="overview"><span>⌂</span>개요</a>
-        <a class="nav" href="#console" data-view-link="console"><span>›_</span>실시간 콘솔 <em>beta</em></a>
-        <a class="nav" href="#players" data-view-link="players"><span>♙</span>플레이어 관리</a>
-        <a class="nav" href="#server-config" data-view-link="server-config"><span>□</span>서버 환경 및 파일 설정</a>
-        <a class="nav" href="#settings" data-view-link="settings"><span>⚙</span>설정</a>
+        <a class="nav active" href="#overview" data-view-link="overview"><span class="nav-icon">⌘</span><span>개요</span></a>
+        <a class="nav" href="#console" data-view-link="console"><span class="nav-icon">▣</span><span>실시간 콘솔</span></a>
+        <a class="nav" href="#players" data-view-link="players"><span class="nav-icon">♧</span><span>플레이어 관리</span></a>
+        <a class="nav" href="#server-config" data-view-link="server-config"><span class="nav-icon">□</span><span>서버 환경 및 파일 설정</span></a>
+        <a class="nav" href="#settings" data-view-link="settings"><span class="nav-icon">☷</span><span>설정</span></a>
       </nav>
-      <div class="side-note">
-        <span class="pulse"></span>
-        <div><strong>Bearer 인증 활성화</strong><small>API v1 보호됨</small></div>
+      <div class="sidebar-health">
+        <div class="health-row"><span>API</span><strong>v1</strong></div>
+        <div class="mini-progress"><i style="width:72%"></i></div>
+        <div class="health-row"><span>AUTH</span><strong>Bearer</strong></div>
+        <div class="mini-progress amber"><i style="width:48%"></i></div>
       </div>
     </aside>
 
     <main>
       <section class="view active-view" id="view-overview" data-view="overview">
-        <header>
-          <div>
-            <p class="eyebrow">SERVER OVERVIEW</p>
-            <h1>서버 개요</h1>
-            <p>서버 상태와 관리 기능을 한눈에 확인하세요.</p>
+        <section class="runtime-banner">
+          <div class="runtime-icon">◷</div>
+          <div class="runtime-copy">
+            <div class="runtime-title-row">
+              <h3>서버 런타임 정보</h3>
+              <span class="status-pill"><span class="status-dot"></span>정상 가동 중</span>
+            </div>
+            <p><span id="platform">연결 중</span> · <span id="mc-version">Minecraft</span></p>
           </div>
-          <div class="header-actions">
-            <button class="ghost-button" id="lock-button" type="button">잠금</button>
-            <div class="status"><span class="pulse"></span><b>온라인</b></div>
-          </div>
-        </header>
-
-        <section class="hero">
-          <div>
-            <span class="chip" id="platform">연결 중</span>
-            <h2 id="mc-version">Minecraft</h2>
-            <p>myDash가 서버 런타임과 연결되어 있습니다.</p>
-          </div>
-          <div class="hero-icon">◈</div>
+          <div class="runtime-uptime">연속 가동 시간: <strong id="uptime">–</strong></div>
         </section>
 
-        <section class="grid">
-          <article class="card">
-            <span class="label">접속 플레이어</span>
-            <strong><span id="players">–</span> <small>/ <span id="max-players">–</span></small></strong>
+        <section class="overview-stats">
+          <article class="metric-card">
+            <div class="metric-head"><span>틱 상태 (TPS)</span><span class="round-icon">✓</span></div>
+            <strong>— <small>/ 20.0 TPS</small></strong>
+            <p class="metric-note success">텔레메트리 대기 중</p>
+          </article>
+          <article class="metric-card">
+            <div class="metric-head"><span>메모리 할당량</span><span class="round-icon">▦</span></div>
+            <strong>—</strong>
+            <div class="bar muted"><i style="width:0"></i></div>
+            <p class="metric-note">JVM 지표 연결 대기</p>
+          </article>
+          <article class="metric-card">
+            <div class="metric-head"><span>프로세서 점유율</span><span class="round-icon amber">◔</span></div>
+            <strong>—</strong>
+            <div class="spark-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          </article>
+          <article class="metric-card">
+            <div class="metric-head"><span>접속 중인 플레이어</span><span class="round-icon">♧</span></div>
+            <strong><span id="players">–</span> <small>/ <span id="max-players">–</span> 최대</small></strong>
             <div class="bar"><i id="player-bar"></i></div>
-          </article>
-          <article class="card">
-            <span class="label">업타임</span>
-            <strong id="uptime">–</strong>
-            <p>myDash가 감지한 서버 실행 시간</p>
-          </article>
-          <article class="card">
-            <span class="label">API</span>
-            <strong>v1</strong>
-            <p><code>/api/v1</code> · Bearer 인증</p>
+            <p class="metric-note success">실시간 접속 목록과 연결됨</p>
           </article>
         </section>
 
-        <section class="panel">
-          <div>
-            <p class="eyebrow">MYDASH CORE</p>
-            <h3>멀티로더 공통 코어</h3>
-            <p>동일한 인증·API·웹 UI를 NeoForge와 Fabric 어댑터가 공유합니다.</p>
-          </div>
-          <div class="tags">
-            <span>NeoForge 1.21.1</span>
-            <span>Fabric 1.21.1</span>
-            <span>Self-hosted</span>
-          </div>
+        <section class="overview-lower">
+          <article class="telemetry-card">
+            <div class="section-head">
+              <div><h3>성능 원격 측정 (텔레메트리)</h3><p>실시간 서버 지표 수집 모듈을 연결할 수 있습니다.</p></div>
+              <span class="chip">24시간</span>
+            </div>
+            <div class="telemetry-blank">
+              <svg viewBox="0 0 600 190" preserveAspectRatio="none" aria-hidden="true">
+                <path class="grid-line" d="M0 35H600M0 95H600M0 155H600"></path>
+                <path class="telemetry-line green" d="M0 104 C80 90,135 112,210 103 S350 86,430 106 S530 88,600 94"></path>
+                <path class="telemetry-line amber" d="M0 150 C90 142,150 124,225 132 S360 146,430 121 S540 134,600 117"></path>
+              </svg>
+              <span>텔레메트리 API 연결 대기</span>
+            </div>
+            <div class="telemetry-foot"><div><span class="legend green"></span>TPS</div><div><span class="legend amber"></span>메모리</div><div class="telemetry-value">현재 데이터 없음</div></div>
+          </article>
+
+          <article class="event-card">
+            <div class="section-head"><div><h3>실시간 이벤트 로그</h3></div><span class="live-label"><span class="status-dot"></span>실시간 피드</span></div>
+            <div class="event-list">
+              <div class="event-item"><span class="event-icon green">↪</span><div><strong>myDash</strong><p>서버 런타임 API가 연결되었습니다.</p></div><small>now</small></div>
+              <div class="event-item"><span class="event-icon amber">◇</span><div><strong>Console</strong><p>실시간 로그 스트림을 사용할 수 있습니다.</p></div><small>SSE</small></div>
+              <div class="event-item"><span class="event-icon green">♧</span><div><strong>Players</strong><p>플레이어 관리 API가 준비되었습니다.</p></div><small>API</small></div>
+              <div class="event-item"><span class="event-icon neutral">▣</span><div><strong>Files</strong><p>안전한 파일 편집 샌드박스가 활성화되어 있습니다.</p></div><small>SAFE</small></div>
+            </div>
+          </article>
         </section>
       </section>
 
       <section class="view" id="view-console" data-view="console" hidden>
-        <header>
-          <div>
-            <p class="eyebrow">LIVE CONSOLE</p>
-            <h1>실시간 콘솔</h1>
-            <p>서버 로그를 실시간으로 확인하고 명령을 바로 실행합니다.</p>
-          </div>
-          <div class="console-header-actions">
-            <button class="ghost-button" id="clear-console" type="button">로그 지우기</button>
-            <div class="status"><span class="pulse" id="console-stream-pulse"></span><b id="console-stream-status">연결 대기</b></div>
-          </div>
+        <header class="page-header">
+          <div class="title-row"><h1>실시간 콘솔 및 터미널</h1><span class="status-pill"><span class="status-dot" id="console-stream-pulse"></span><b id="console-stream-status">연결 대기</b></span></div>
+          <div class="page-actions"><button class="secondary-button" id="clear-console" type="button">☰ 화면 비우기</button></div>
         </header>
-
-        <section class="console-shell">
-          <div class="console-toolbar">
-            <div>
-              <strong>Server Console</strong>
-              <small>Minecraft 서버 스레드로 전달</small>
-            </div>
-            <span class="chip">BETA</span>
-          </div>
-          <div class="console-output" id="console-output">
-            <div class="console-empty" id="console-empty">콘솔 탭을 열면 최근 로그와 실시간 로그가 표시됩니다.</div>
-          </div>
-          <form class="command-form console-command" id="command-form">
-            <div class="command-input-wrap">
-              <span>&gt;</span>
-              <input id="command-input" type="text" maxlength="2048" autocomplete="off"
-                     placeholder="say Hello from myDash" aria-label="서버 명령">
-            </div>
-            <button type="submit">실행</button>
-          </form>
-          <p class="command-result" id="command-result"></p>
+        <div class="filter-strip"><span>필터</span><b>전체</b><span>정보</span><span>채팅</span><span>경고</span><span>오류</span><code>Server Console</code></div>
+        <section class="terminal">
+          <div class="terminal-bar"><div><i class="dot red"></i><i class="dot yellow"></i><i class="dot green"></i><strong>server.stdout</strong></div><div>실시간 추적 · UTF-8</div></div>
+          <div class="console-output" id="console-output"><div class="console-empty" id="console-empty">콘솔 탭을 열면 최근 로그와 실시간 로그가 표시됩니다.</div></div>
         </section>
+        <div class="command-suggestions"><span>⚡ 추천 명령어:</span><code>/say [msg]</code><code>/time set day</code><code>/weather clear</code><code>/save-all</code><code>/whitelist add</code></div>
+        <form class="command-form" id="command-form"><span class="prompt">&gt;_</span><input id="command-input" type="text" maxlength="2048" autocomplete="off" placeholder="명령어 또는 채팅 메시지를 입력하세요..." aria-label="서버 명령"><button class="primary-button" type="submit">실행 ▷</button></form>
+        <p class="command-result" id="command-result"></p>
+        <div class="command-hints"><span>Enter · 전송</span><span>↑↓ · 명령어 내역</span><span>Tab · 자동완성</span></div>
       </section>
 
       <section class="view" id="view-players" data-view="players" hidden>
-        <header>
-          <div>
-            <p class="eyebrow">PLAYER MANAGEMENT</p>
-            <h1>플레이어 목록 및 제재 관리</h1>
-            <p>현재 접속 중인 플레이어를 확인하고 관리합니다.</p>
-          </div>
-          <button class="ghost-button" id="refresh-players" type="button">새로고침</button>
+        <header class="page-header">
+          <div><h1>플레이어 목록 및 제재 관리</h1></div>
+          <div class="page-actions"><span class="whitelist-pill">♢ 화이트리스트 <b>ON</b></span><button class="primary-button" id="refresh-players" type="button">↻ 새로고침</button></div>
         </header>
-
-        <section class="player-stats">
-          <article class="card">
-            <span class="label">현재 접속자</span>
-            <strong id="player-count-detail">–</strong>
-            <p>실시간 접속 목록</p>
-          </article>
-          <article class="card">
-            <span class="label">관리자(OP)</span>
-            <strong id="operator-count">–</strong>
-            <p>현재 접속자 기준</p>
-          </article>
+        <section class="player-summary">
+          <article><span>현재 접속자</span><strong id="player-count-detail">–</strong><small>실시간 접속 목록</small></article>
+          <article><span>화이트리스트 등록</span><strong>—</strong><small>API 확장 예정</small></article>
+          <article><span>관리자(OP)</span><strong id="operator-count">–</strong><small>현재 접속자 기준</small></article>
+          <article><span>보안 및 제재 내역</span><strong>—</strong><small>서버 기록 기반</small></article>
         </section>
-
-        <section class="player-panel">
-          <div class="player-panel-head">
-            <div>
-              <p class="eyebrow">ONLINE PLAYERS</p>
-              <h3>접속 중인 플레이어</h3>
-            </div>
-            <span class="chip" id="player-list-status">불러오는 중</span>
-          </div>
-          <div class="player-list" id="player-list"></div>
-          <div class="empty-state" id="player-empty" hidden>현재 접속 중인 플레이어가 없습니다.</div>
+        <div class="player-toolbar"><div class="tab-pills"><b>전체 플레이어</b><span>화이트리스트</span><span>관리자</span><span>차단됨</span></div><span class="chip" id="player-list-status">불러오는 중</span></div>
+        <section class="players-layout">
+          <article class="player-panel"><div class="player-table-head"><span>플레이어</span><span>상태 / 관리</span></div><div class="player-list" id="player-list"></div><div class="empty-state" id="player-empty" hidden>현재 접속 중인 플레이어가 없습니다.</div></article>
+          <aside class="player-inspector">
+            <div class="inspector-title">♧ 플레이어 상세 정보</div>
+            <div class="inspector-placeholder"><span class="avatar-large">?</span><strong>플레이어를 선택하세요</strong><p>목록의 관리 버튼으로 OP, 화이트리스트, 킥, 밴 작업을 실행할 수 있습니다.</p></div>
+            <div class="inspector-actions"><button class="secondary-button" type="button" disabled>↪ 추방 (Kick)</button><button class="danger-soft-button" type="button" disabled>⌁ 접속 차단 (Ban)</button></div>
+          </aside>
         </section>
       </section>
 
       <section class="view" id="view-server-config" data-view="server-config" hidden>
-        <header>
-          <div>
-            <p class="eyebrow">SERVER ENVIRONMENT</p>
-            <h1>서버 환경 및 파일 설정</h1>
-            <p>자주 사용하는 server.properties 항목을 안전하게 관리합니다.</p>
-          </div>
-          <span class="chip">server.properties</span>
-        </header>
-
-        <section class="server-config-hero">
-          <div>
-            <p class="eyebrow">GENERAL SETTINGS</p>
-            <h3>서버 환경 설정</h3>
-            <p>포트, 플레이어 정원, 인증, 난이도 등 서버 기본 구성을 변경합니다.</p>
-          </div>
-          <div class="server-config-actions">
-            <button class="ghost-button" id="reload-server-properties" type="button">원래대로</button>
-            <button class="primary-button" id="save-server-properties" type="submit" form="server-properties-form">설정 저장</button>
-          </div>
+        <header class="page-header"><div><h1>서버 환경 및 파일 설정</h1></div><div class="storage-card"><span class="round-icon">□</span><div><small>파일 설정</small><strong>Safe sandbox</strong></div></div></header>
+        <div class="settings-tabs"><a class="active" href="#general-settings">☷ 일반 설정</a><a href="#file-manager">▤ 파일 편집기</a><span>🎮 게임규칙</span><span>◴ 월드 백업</span></div>
+        <section class="settings-intro" id="general-settings">
+          <div><h3>서버 환경 설정</h3><p>포트, 플레이어 정원, 난이도, 화이트리스트 등 서버 기본 구성을 직관적으로 설정합니다.</p></div>
+          <div class="page-actions"><button class="secondary-button" id="reload-server-properties" type="button">↻ 원래대로</button><button class="primary-button" id="save-server-properties" type="submit" form="server-properties-form">▣ 설정 저장 및 적용</button></div>
         </section>
-
-        <form class="server-properties-form" id="server-properties-form">
-          <section class="settings-card config-section">
-            <div class="settings-card-head">
-              <div>
-                <p class="eyebrow">NETWORK & ACCESS</p>
-                <h3>기본 네트워크 및 접속 설정</h3>
-              </div>
-              <span class="settings-icon">⌁</span>
-            </div>
-
-            <div class="field-grid">
-              <label class="wide-field">
-                <span>서버 설명 문구 (MOTD)</span>
-                <input id="server-motd" type="text" maxlength="512" autocomplete="off">
-                <small>서버 목록에 표시되는 설명입니다.</small>
-              </label>
-
-              <label>
-                <span>서버 포트</span>
-                <input id="server-game-port" type="number" min="1" max="65535" inputmode="numeric">
-                <small>server-port</small>
-              </label>
-
-              <label>
-                <span>최대 접속자</span>
-                <input id="server-max-players" type="number" min="1" max="100000" inputmode="numeric">
-                <small>max-players</small>
-              </label>
-
-              <label class="toggle-row wide-field config-toggle">
-                <div>
-                  <span>온라인 모드 (정품 인증)</span>
-                  <small>Mojang/Microsoft 계정 인증을 사용합니다.</small>
-                </div>
-                <input id="server-online-mode" type="checkbox">
-              </label>
-
-              <label class="toggle-row wide-field config-toggle">
-                <div>
-                  <span>화이트리스트 사용</span>
-                  <small>등록된 플레이어만 접속하도록 제한합니다.</small>
-                </div>
-                <input id="server-whitelist" type="checkbox">
-              </label>
-            </div>
+        <form class="settings-card-grid" id="server-properties-form">
+          <section class="terra-card config-section">
+            <div class="card-title"><h3>⌘ 기본 네트워크 및 접속 설정</h3><small>Network & Access</small></div>
+            <label class="field wide"><span>서버 설명 문구 (MOTD)</span><input id="server-motd" type="text" maxlength="512" autocomplete="off"><small>서버 목록에 표시되는 설명입니다.</small></label>
+            <div class="two-fields"><label class="field"><span>서버 포트</span><input id="server-game-port" type="number" min="1" max="65535" inputmode="numeric"><small>server-port</small></label><label class="field"><span>최대 접속자</span><input id="server-max-players" type="number" min="1" max="100000" inputmode="numeric"><small>max-players</small></label></div>
+            <label class="toggle-row"><div><span>온라인 모드 (정품 인증)</span><small>Mojang/Microsoft 계정 인증을 사용합니다.</small></div><input id="server-online-mode" type="checkbox"></label>
+            <label class="toggle-row"><div><span>화이트리스트 사용</span><small>등록된 플레이어만 접속하도록 제한합니다.</small></div><input id="server-whitelist" type="checkbox"></label>
           </section>
-
-          <section class="settings-card config-section">
-            <div class="settings-card-head">
-              <div>
-                <p class="eyebrow">GAMEPLAY MODE</p>
-                <h3>게임플레이 환경 설정</h3>
-              </div>
-              <span class="settings-icon">◇</span>
+          <section class="terra-card config-section">
+            <div class="card-title"><h3>⚒ 게임플레이 환경 설정</h3><small>Gameplay Mode</small></div>
+            <div class="two-fields">
+              <label class="field"><span>기본 난이도</span><select id="server-difficulty"><option value="peaceful">평화로움 (Peaceful)</option><option value="easy">쉬움 (Easy)</option><option value="normal">보통 (Normal)</option><option value="hard">어려움 (Hard)</option></select><small>difficulty</small></label>
+              <label class="field"><span>기본 게임 모드</span><select id="server-gamemode"><option value="survival">서바이벌 (Survival)</option><option value="creative">크리에이티브 (Creative)</option><option value="adventure">모험 (Adventure)</option><option value="spectator">관전 (Spectator)</option></select><small>gamemode</small></label>
             </div>
-
-            <div class="field-grid">
-              <label>
-                <span>기본 난이도</span>
-                <select id="server-difficulty">
-                  <option value="peaceful">평화로움 (Peaceful)</option>
-                  <option value="easy">쉬움 (Easy)</option>
-                  <option value="normal">보통 (Normal)</option>
-                  <option value="hard">어려움 (Hard)</option>
-                </select>
-                <small>difficulty</small>
-              </label>
-
-              <label>
-                <span>기본 게임 모드</span>
-                <select id="server-gamemode">
-                  <option value="survival">서바이벌 (Survival)</option>
-                  <option value="creative">크리에이티브 (Creative)</option>
-                  <option value="adventure">모험 (Adventure)</option>
-                  <option value="spectator">관전 (Spectator)</option>
-                </select>
-                <small>gamemode</small>
-              </label>
-
-              <label class="toggle-row wide-field config-toggle">
-                <div>
-                  <span>하드코어 모드</span>
-                  <small>hardcore=true 설정을 사용합니다.</small>
-                </div>
-                <input id="server-hardcore" type="checkbox">
-              </label>
-            </div>
+            <label class="toggle-row"><div><span>하드코어 모드</span><small>hardcore=true 설정을 사용합니다.</small></div><input id="server-hardcore" type="checkbox"></label>
+            <div class="readout-row"><span>변경 사항</span><strong>서버 재시작 후 완전히 적용</strong></div>
           </section>
         </form>
 
-        <section class="file-manager">
-          <div class="file-manager-head">
-            <div>
-              <p class="eyebrow">SAFE FILE MANAGER</p>
-              <h3>서버 파일 탐색기</h3>
-              <p>허용된 설정 경로와 모드 파일 목록만 표시합니다.</p>
-            </div>
-            <div class="file-manager-tools">
-              <button class="ghost-button" id="file-up" type="button">상위 폴더</button>
-              <button class="ghost-button" id="file-refresh" type="button">새로고침</button>
-            </div>
-          </div>
-
-          <div class="file-path-bar">
-            <span>경로</span>
-            <code id="file-current-path">/</code>
-          </div>
-
+        <section class="file-manager terra-card" id="file-manager">
+          <div class="file-manager-head"><div><div class="card-title"><h3>▤ 서버 파일 탐색기</h3><small>Safe File Editor</small></div><p>허용된 설정 경로와 모드 파일 목록만 표시합니다.</p></div><div class="page-actions"><button class="secondary-button" id="file-up" type="button">↑ 상위 폴더</button><button class="secondary-button" id="file-refresh" type="button">↻ 새로고침</button></div></div>
+          <div class="file-path-bar"><span>경로</span><code id="file-current-path">/</code></div>
           <div class="file-manager-grid">
-            <div class="file-browser">
-              <div class="file-list-head">
-                <span>이름</span>
-                <span>크기</span>
-              </div>
-              <div class="file-list" id="file-list"></div>
-              <div class="empty-state" id="file-empty" hidden>표시할 파일이 없습니다.</div>
-            </div>
-
-            <div class="file-editor">
-              <div class="file-editor-head">
-                <div>
-                  <span class="file-editor-label">EDITOR</span>
-                  <strong id="file-editor-name">파일을 선택하세요</strong>
-                </div>
-                <button class="primary-button" id="file-save" type="button" disabled>파일 저장</button>
-              </div>
-
-              <textarea id="file-editor-content" spellcheck="false" disabled
-                        placeholder="편집 가능한 텍스트 파일을 선택하면 내용이 표시됩니다."></textarea>
-
-              <div class="file-editor-foot">
-                <span id="file-editor-status">JAR 등 바이너리 파일은 목록 확인만 가능합니다.</span>
-                <span>최대 편집 크기 1 MB</span>
-              </div>
-            </div>
+            <div class="file-browser"><div class="file-list-head"><span>이름</span><span>크기</span></div><div class="file-list" id="file-list"></div><div class="empty-state" id="file-empty" hidden>표시할 파일이 없습니다.</div></div>
+            <div class="file-editor"><div class="editor-top"><div><small>EDITOR</small><strong id="file-editor-name">파일을 선택하세요</strong></div><button class="primary-button" id="file-save" type="button" disabled>파일 저장</button></div><textarea id="file-editor-content" spellcheck="false" disabled placeholder="편집 가능한 텍스트 파일을 선택하면 내용이 표시됩니다."></textarea><div class="editor-foot"><span id="file-editor-status">JAR 등 바이너리 파일은 목록 확인만 가능합니다.</span><span>최대 편집 크기 1 MB</span></div></div>
           </div>
         </section>
-
-        <section class="settings-card config-save-note">
-          <div>
-            <p class="eyebrow">APPLY CHANGES</p>
-            <h3>변경 내용은 서버 재시작 후 완전히 적용됩니다.</h3>
-            <p>myDash는 지정된 항목만 수정하며, 나머지 server.properties 값은 유지합니다.</p>
-          </div>
-          <span id="server-properties-result"></span>
-        </section>
+        <section class="settings-apply-note"><div><h3>변경 내용은 서버 재시작 후 완전히 적용됩니다.</h3><p>myDash는 지정된 항목만 수정하며, 나머지 server.properties 값은 유지합니다.</p></div><span id="server-properties-result"></span></section>
       </section>
 
       <section class="view" id="view-settings" data-view="settings" hidden>
-        <header>
-          <div>
-            <p class="eyebrow">MYDASH SETTINGS</p>
-            <h1>myDash 설정</h1>
-            <p>웹 서버 연결 설정과 관리자 인증을 관리합니다.</p>
-          </div>
-          <span class="chip">재시작 적용</span>
-        </header>
-
-        <div class="settings-grid">
-          <section class="settings-card">
-            <div class="settings-card-head">
-              <div>
-                <p class="eyebrow">WEB SERVER</p>
-                <h3>웹 서버 연결</h3>
-              </div>
-              <span class="settings-icon">⌁</span>
-            </div>
-
+        <header class="page-header"><div><h1>설정</h1></div><span class="module-pill">myDash v2.1 <b>동작 중</b></span></header>
+        <section class="settings-intro"><div><h3>설정</h3><p>마인크래프트 서버 내장 웹 서버, 관리자 웹 인증, 포트 바인딩 및 외부 연동 옵션을 설정합니다.</p></div><span class="chip">재시작 적용</span></section>
+        <div class="settings-card-grid">
+          <section class="terra-card">
+            <div class="card-title"><h3>⌘ 내장 웹서버 및 통신 설정</h3><small>HTTP & WebSocket</small></div>
             <form id="settings-form" class="settings-form">
-              <label>
-                <span>바인드 주소</span>
-                <input id="setting-bind" type="text" maxlength="255" autocomplete="off" placeholder="127.0.0.1">
-                <small>기본값은 로컬 접속만 허용하는 127.0.0.1입니다.</small>
-              </label>
-
-              <label>
-                <span>포트</span>
-                <input id="setting-port" type="number" min="1" max="65535" inputmode="numeric">
-                <small>변경 후 Minecraft 서버를 재시작해야 적용됩니다.</small>
-              </label>
-
-              <label class="toggle-row">
-                <div>
-                  <span>외부 접속 허용</span>
-                  <small>0.0.0.0 또는 외부 인터페이스 사용 시에만 켜세요.</small>
-                </div>
-                <input id="setting-remote" type="checkbox">
-              </label>
-
-              <div class="settings-actions">
-                <button type="submit">설정 저장</button>
-                <span id="settings-result"></span>
-              </div>
+              <div class="two-fields"><label class="field"><span>웹 대시보드 포트</span><input id="setting-port" type="number" min="1" max="65535" inputmode="numeric"><small>web-port</small></label><label class="field"><span>바인드 주소</span><input id="setting-bind" type="text" maxlength="255" autocomplete="off" placeholder="127.0.0.1"><small>bind-address</small></label></div>
+              <label class="toggle-row"><div><span>외부 접속 허용</span><small>0.0.0.0 또는 외부 인터페이스 사용 시에만 켜세요.</small></div><input id="setting-remote" type="checkbox"></label>
+              <div class="settings-actions"><button class="primary-button" type="submit">설정 저장</button><span id="settings-result"></span></div>
             </form>
           </section>
-
-          <section class="settings-card">
-            <div class="settings-card-head">
-              <div>
-                <p class="eyebrow">SECURITY</p>
-                <h3>관리자 토큰</h3>
-              </div>
-              <span class="settings-icon">⌾</span>
-            </div>
-
-            <p class="settings-description">
-              현재 토큰은 서버에 원문으로 저장되지 않습니다. 재발급하면 기존 토큰은 즉시 사용할 수 없게 됩니다.
-            </p>
-
-            <button class="danger-soft-button" id="rotate-token" type="button">관리자 토큰 재발급</button>
-
-            <div class="token-result" id="token-result" hidden>
-              <span>새 관리자 토큰</span>
-              <code id="new-token"></code>
-              <small>이 값은 지금 한 번만 확인하고 안전한 곳에 보관하세요.</small>
-            </div>
+          <section class="terra-card">
+            <div class="card-title"><h3>♢ 웹 인증 및 관리자 보안</h3><small>Authentication & Security</small></div>
+            <p class="card-description">현재 관리자 토큰은 서버에 원문으로 저장되지 않습니다. 재발급하면 기존 토큰은 즉시 사용할 수 없게 됩니다.</p>
+            <button class="danger-soft-button wide-button" id="rotate-token" type="button">관리자 토큰 재발급</button>
+            <div class="token-result" id="token-result" hidden><span>새 관리자 토큰</span><code id="new-token"></code><small>이 값은 지금 한 번만 확인하고 안전한 곳에 보관하세요.</small></div>
+          </section>
+          <section class="terra-card">
+            <div class="card-title"><h3>⌁ 웹 권한 및 제어 모듈</h3><small>Permissions & Control</small></div>
+            <div class="readout-row"><span>웹 RCON 원격 콘솔 명령</span><strong>Bearer 보호</strong></div><div class="readout-row"><span>플레이어 제어</span><strong>인증 필요</strong></div><div class="readout-row"><span>웹 파일 편집기</span><strong>Safe sandbox</strong></div><div class="readout-row"><span>동일 출처 정책</span><strong>활성화</strong></div>
+          </section>
+          <section class="terra-card">
+            <div class="card-title"><h3>♧ 네트워크 보안</h3><small>Security Note</small></div>
+            <p class="card-description">인터넷에 직접 노출하지 않는 것을 권장합니다.</p><div class="security-note">외부 접속이 필요하면 HTTPS가 적용된 리버스 프록시나 터널 뒤에서 myDash를 운영하세요.</div>
           </section>
         </div>
-
-        <section class="settings-card network-warning">
-          <p class="eyebrow">SECURITY NOTE</p>
-          <h3>인터넷에 직접 노출하지 않는 것을 권장합니다.</h3>
-          <p>외부 접속이 필요하면 HTTPS가 적용된 리버스 프록시나 터널 뒤에서 myDash를 운영하세요.</p>
-        </section>
       </section>
 
       <p class="error" id="error"></p>
-</main>
+    </main>
   </div>
 
   <script src="/i18n.js"></script>
