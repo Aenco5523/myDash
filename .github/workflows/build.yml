@@ -14,13 +14,14 @@ concurrency:
   group: mydash-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Every build and release job runs only on self-hosted runners.
-# Gradle's persistent ~/.gradle directory is reused as the local dependency,
-# Minecraft mapping and build cache. GitHub Actions cache storage is disabled.
+# Builds intentionally run only on the Windows self-hosted runner.
+# The runner's persistent ~/.gradle directory is the dependency, mapping,
+# wrapper/distribution and Gradle build cache. No GitHub cache/artifact
+# storage is used for normal builds.
 jobs:
   build:
     name: ${{ matrix.name }}
-    runs-on: self-hosted
+    runs-on: [self-hosted, Windows, X64]
     strategy:
       fail-fast: false
       matrix:
@@ -33,18 +34,40 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Repair corrupted Maven toolchain metadata
+        shell: pwsh
+        run: |
+          $toolchains = Join-Path $HOME ".m2\toolchains.xml"
+          if (Test-Path $toolchains) {
+            $bytes = [System.IO.File]::ReadAllBytes($toolchains)
+            if ($bytes -contains 0) {
+              Write-Host "Removing corrupted Maven toolchains.xml containing NUL bytes."
+              Remove-Item $toolchains -Force
+            }
+          }
+
       - name: Set up Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: "8.8"
-          cache-disabled: true
-          validate-wrappers: true
+          cache-provider: external
+          validate-wrappers: false
+
+      - name: Show local Gradle cache
+        shell: pwsh
+        run: |
+          Write-Host "GRADLE_USER_HOME=$HOME\.gradle"
+          if (Test-Path (Join-Path $HOME ".gradle\caches")) {
+            Write-Host "Existing Gradle caches found."
+          } else {
+            Write-Host "Cold Gradle cache; first build will populate it."
+          }
 
       - name: Build
         run: gradle ${{ matrix.task }} --build-cache --parallel --stacktrace
@@ -52,23 +75,34 @@ jobs:
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: build
-    runs-on: self-hosted
+    runs-on: [self-hosted, Windows, X64]
 
     steps:
       - uses: actions/checkout@v4
 
+      - name: Repair corrupted Maven toolchain metadata
+        shell: pwsh
+        run: |
+          $toolchains = Join-Path $HOME ".m2\toolchains.xml"
+          if (Test-Path $toolchains) {
+            $bytes = [System.IO.File]::ReadAllBytes($toolchains)
+            if ($bytes -contains 0) {
+              Remove-Item $toolchains -Force
+            }
+          }
+
       - name: Set up Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: "8.8"
-          cache-disabled: true
-          validate-wrappers: true
+          cache-provider: external
+          validate-wrappers: false
 
       - name: Build all release JARs
         run: gradle buildSupported --build-cache --parallel --stacktrace
