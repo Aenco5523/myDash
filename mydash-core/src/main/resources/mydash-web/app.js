@@ -1,6 +1,6 @@
 const byId=id=>document.getElementById(id);
 const TOKEN_KEY="mydash.adminToken";
-let currentView="overview";
+let currentView="overview";\nlet extensionSignature="";
 
 function duration(ms){
   const s=Math.max(0,Math.floor(ms/1000));
@@ -40,10 +40,53 @@ function selectView(name){
     view.hidden=view.getAttribute("data-view")!==name;
     view.classList.toggle("active-view",!view.hidden);
   });
-  document.querySelectorAll("[data-view-link]").forEach(link=>{
-    link.classList.toggle("active",link.getAttribute("data-view-link")===name);
-  });
+  document.querySelectorAll("[data-extension-view]").forEach(view=>{view.hidden=true});
+  document.querySelectorAll(".sidebar .nav").forEach(link=>link.classList.remove("active"));
+  const active=document.querySelector('[data-view-link="'+name+'"]');
+  if(active)active.classList.add("active");
   if(name==="players") refreshPlayers();
+}
+
+function selectExtension(extension){
+  currentView="extension:"+extension.id;
+  document.querySelectorAll("[data-view]").forEach(view=>{view.hidden=true});
+  document.querySelectorAll("[data-extension-view]").forEach(view=>{view.hidden=true});
+  document.querySelectorAll(".sidebar .nav").forEach(link=>link.classList.remove("active"));
+
+  const link=document.querySelector('[data-extension-link="'+extension.id+'"]');
+  if(link)link.classList.add("active");
+
+  let view=document.querySelector('[data-extension-view="'+extension.id+'"]');
+  if(!view){
+    view=document.createElement("section");
+    view.className="extension-view";
+    view.setAttribute("data-extension-view",extension.id);
+
+    const header=document.createElement("header");
+    const titleWrap=document.createElement("div");
+    const eyebrow=document.createElement("p");
+    eyebrow.className="eyebrow";
+    eyebrow.textContent="EXTENSION";
+    const title=document.createElement("h1");
+    title.textContent=extension.displayName;
+    const subtitle=document.createElement("p");
+    subtitle.textContent="외부 모드/플러그인이 myDash에 등록한 패널입니다.";
+    titleWrap.append(eyebrow,title,subtitle);
+    header.appendChild(titleWrap);
+
+    const frameShell=document.createElement("div");
+    frameShell.className="extension-frame-shell";
+    const frame=document.createElement("iframe");
+    frame.className="extension-frame";
+    frame.src=extension.route;
+    frame.title=extension.displayName;
+    frameShell.appendChild(frame);
+
+    view.append(header,frameShell);
+    const error=byId("error");
+    error.parentNode.insertBefore(view,error);
+  }
+  view.hidden=false;
 }
 
 document.querySelectorAll("[data-view-link]").forEach(link=>{
@@ -72,6 +115,51 @@ async function refresh(){
   }catch(e){
     if(e.message!=="unauthorized"){
       byId("error").textContent="서버 상태 API에 연결할 수 없습니다: "+e.message;
+    }
+  }
+}
+
+async function refreshExtensions(){
+  if(!token())return;
+
+  try{
+    const response=await api("/api/v1/extensions");
+    const extensions=await response.json();
+    if(!response.ok)throw new Error(extensions.error||("HTTP "+response.status));
+
+    const signature=JSON.stringify(extensions.map(extension=>[
+      extension.id,extension.displayName,extension.route
+    ]));
+    if(signature===extensionSignature)return;
+    extensionSignature=signature;
+
+    document.querySelectorAll("[data-extension-link]").forEach(link=>link.remove());
+    document.querySelectorAll("[data-extension-view]").forEach(view=>view.remove());
+
+    const nav=document.querySelector(".sidebar nav");
+    extensions.forEach(extension=>{
+      const link=document.createElement("a");
+      link.className="nav extension-nav";
+      link.href="#extension-"+extension.id;
+      link.setAttribute("data-extension-link",extension.id);
+
+      const icon=document.createElement("span");
+      icon.textContent="◇";
+      const label=document.createElement("span");
+      label.textContent=extension.displayName;
+      const badge=document.createElement("em");
+      badge.textContent="EXT";
+
+      link.append(icon,label,badge);
+      link.addEventListener("click",event=>{
+        event.preventDefault();
+        selectExtension(extension);
+      });
+      nav.appendChild(link);
+    });
+  }catch(e){
+    if(e.message!=="unauthorized"){
+      byId("error").textContent="Extension 목록을 불러오지 못했습니다: "+e.message;
     }
   }
 }
