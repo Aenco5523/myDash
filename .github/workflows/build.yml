@@ -90,10 +90,13 @@ jobs:
         include:
           - name: NeoForge 1.21.1
             task: :platforms:neoforge-1.21.1:build
+            jar: platforms/neoforge-1.21.1/build/libs/myDash-neoforge-1.21.1-v2.1.jar
           - name: Fabric 1.21.1
             task: :platforms:fabric-1.21.1:build
+            jar: platforms/fabric-1.21.1/build/libs/myDash-fabric-1.21.1-v2.1.jar
           - name: Paper 1.21.1
             task: :platforms:paper-1.21.1:build
+            jar: platforms/paper-1.21.1/build/libs/myDash-paper-1.21.1-v2.1.jar
 
     steps:
       - uses: actions/checkout@v4
@@ -136,7 +139,7 @@ jobs:
           body: |
             Build-verified myDash v2.1 server JARs for every currently supported Minecraft/platform target.
           overwrite_files: true
-          files: platforms/**/build/libs/myDash-*.jar
+          files: "${{ matrix.jar }}"
 
   standalone:
     needs: changes
@@ -151,40 +154,49 @@ jobs:
             path: legacy/forge-1.16.5
             java: "8"
             gradle: "7.6.4"
+            jar: legacy/forge-1.16.5/build/libs/myDash-forge-1.16.5-v2.1.jar
           - name: Fabric 1.16.5
             path: legacy/fabric-1.16.5
             java: "21"
             gradle: "8.8"
+            jar: legacy/fabric-1.16.5/build/libs/myDash-fabric-1.16.5-v2.1.jar
           - name: Paper 1.16.5
             path: legacy/paper-1.16.5
             java: "16"
             gradle: "7.6.4"
+            jar: legacy/paper-1.16.5/build/libs/myDash-paper-1.16.5-v2.1.jar
 
           - name: Forge 1.18.2
             path: legacy/forge-1.18.2
             java: "17"
             gradle: "7.6.4"
+            jar: legacy/forge-1.18.2/build/libs/myDash-forge-1.18.2-v2.1.jar
           - name: Fabric 1.18.2
             path: legacy/fabric-1.18.2
             java: "21"
             gradle: "8.8"
+            jar: legacy/fabric-1.18.2/build/libs/myDash-fabric-1.18.2-v2.1.jar
           - name: Paper 1.18.2
             path: legacy/paper-1.18.2
             java: "17"
             gradle: "7.6.4"
+            jar: legacy/paper-1.18.2/build/libs/myDash-paper-1.18.2-v2.1.jar
 
           - name: Forge 1.20.1
             path: legacy/forge-1.20.1
             java: "17"
             gradle: "8.8"
+            jar: legacy/forge-1.20.1/build/libs/myDash-forge-1.20.1-v2.1.jar
           - name: Fabric 1.20.1
             path: legacy/fabric-1.20.1
             java: "21"
             gradle: "8.8"
+            jar: legacy/fabric-1.20.1/build/libs/myDash-fabric-1.20.1-v2.1.jar
           - name: Paper 1.20.1
             path: legacy/paper-1.20.1
             java: "21"
             gradle: "8.8"
+            jar: legacy/paper-1.20.1/build/libs/myDash-paper-1.20.1-v2.1.jar
 
     steps:
       - uses: actions/checkout@v4
@@ -227,7 +239,7 @@ jobs:
           body: |
             Build-verified myDash v2.1 server JARs for every currently supported Minecraft/platform target.
           overwrite_files: true
-          files: "${{ matrix.path }}/build/libs/myDash-*.jar"
+          files: "${{ matrix.jar }}"
 
   calver:
     needs: changes
