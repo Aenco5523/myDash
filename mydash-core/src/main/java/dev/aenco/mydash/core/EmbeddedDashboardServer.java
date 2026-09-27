@@ -12,6 +12,8 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -57,6 +59,7 @@ final class EmbeddedDashboardServer {
         server.createContext("/api/v1/health", this::health);
         server.createContext("/api/v1/server", this::serverInfo);
         server.createContext("/api/v1/console", this::console);
+        server.createContext("/api/v1/players", this::players);
         server.createContext("/", new StaticHandler());
 
         server.start();
@@ -108,6 +111,78 @@ final class EmbeddedDashboardServer {
             write(exchange, 503, "application/json; charset=utf-8", Json.error("interrupted"));
         } catch (ExecutionException exception) {
             write(exchange, 500, "application/json; charset=utf-8", Json.error("command_failed"));
+        }
+    }
+
+    private void players(HttpExchange exchange) throws IOException {
+        if (!authorize(exchange)) return;
+
+        String path = exchange.getRequestURI().getPath();
+        if ("/api/v1/players".equals(path) || "/api/v1/players/".equals(path)) {
+            if (!method(exchange, "GET")) return;
+
+            try {
+                List<PlayerSnapshot> players = bridge.players().get(5, TimeUnit.SECONDS);
+                write(exchange, 200, "application/json; charset=utf-8", Json.players(players));
+            } catch (TimeoutException exception) {
+                write(exchange, 504, "application/json; charset=utf-8", Json.error("players_timeout"));
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                write(exchange, 503, "application/json; charset=utf-8", Json.error("interrupted"));
+            } catch (ExecutionException exception) {
+                write(exchange, 500, "application/json; charset=utf-8", Json.error("players_failed"));
+            }
+            return;
+        }
+
+        String prefix = "/api/v1/players/";
+        String suffix = "/kick";
+        if (!path.startsWith(prefix) || !path.endsWith(suffix)) {
+            write(exchange, 404, "application/json; charset=utf-8", Json.error("not_found"));
+            return;
+        }
+
+        if (!method(exchange, "POST")) return;
+
+        String uuidPart = path.substring(prefix.length(), path.length() - suffix.length());
+        if (uuidPart.endsWith("/")) uuidPart = uuidPart.substring(0, uuidPart.length() - 1);
+
+        UUID uuid;
+        try {
+            uuid = UUID.fromString(uuidPart);
+        } catch (IllegalArgumentException exception) {
+            write(exchange, 400, "application/json; charset=utf-8", Json.error("invalid_uuid"));
+            return;
+        }
+
+        String body;
+        try {
+            body = readBody(exchange, MAX_BODY_BYTES);
+        } catch (BodyTooLargeException exception) {
+            write(exchange, 413, "application/json; charset=utf-8", Json.error("payload_too_large"));
+            return;
+        }
+
+        String reason = Json.readOptionalReason(body);
+        if (reason == null) {
+            write(exchange, 400, "application/json; charset=utf-8", Json.error("invalid_reason"));
+            return;
+        }
+
+        try {
+            boolean kicked = bridge.kickPlayer(uuid, reason).get(5, TimeUnit.SECONDS);
+            if (!kicked) {
+                write(exchange, 404, "application/json; charset=utf-8", Json.error("player_not_found"));
+                return;
+            }
+            write(exchange, 202, "application/json; charset=utf-8", Json.actionAccepted("kick"));
+        } catch (TimeoutException exception) {
+            write(exchange, 504, "application/json; charset=utf-8", Json.error("kick_timeout"));
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            write(exchange, 503, "application/json; charset=utf-8", Json.error("interrupted"));
+        } catch (ExecutionException exception) {
+            write(exchange, 500, "application/json; charset=utf-8", Json.error("kick_failed"));
         }
     }
 
