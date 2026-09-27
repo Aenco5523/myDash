@@ -3,7 +3,7 @@ plugins {
 }
 group = 'dev.aenco.mydash'
 version = 'v2.1'
-def mcVersion = providers.gradleProperty('mcVersion').orElse('26.3').get()
+def mcVersion = providers.gradleProperty('targetMinecraft').orElse('26.3').get()
 def neoVersions = ['26.1':'26.1.0.19-beta','26.2':'26.2.0.88','26.3':'26.3.0.16-beta']
 def mcRanges = ['26.1':'[26.1,26.2)','26.2':'[26.2,26.3)','26.3':'[26.3,26.4)']
 if (!neoVersions.containsKey(mcVersion)) throw new GradleException("Unsupported NeoForge version: " + mcVersion)

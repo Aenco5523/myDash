@@ -251,7 +251,7 @@ jobs:
           validate-wrappers: false
 
       - name: Build ${{ matrix.name }}
-        run: gradle -p ${{ matrix.path }} build -PmcVersion=${{ matrix.mc }} --build-cache --stacktrace
+        run: gradle -p ${{ matrix.path }} build -PtargetMinecraft=${{ matrix.mc }} --build-cache --stacktrace
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -311,7 +311,7 @@ jobs:
             @("calver/paper","26.1"), @("calver/paper","26.2"), @("calver/paper","26.3")
           )
           foreach ($target in $targets) {
-            gradle -p $target[0] build "-PmcVersion=$($target[1])" --build-cache --stacktrace
+            gradle -p $target[0] build "-PtargetMinecraft=$($target[1])" --build-cache --stacktrace
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
 

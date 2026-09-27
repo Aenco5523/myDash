@@ -1,9 +1,9 @@
 plugins {
-    id 'net.fabricmc.fabric-loom' version '1.17'
+    id 'net.fabricmc.fabric-loom' version '1.17-SNAPSHOT'
 }
 group = 'dev.aenco.mydash'
 version = 'v2.1'
-def mcVersion = providers.gradleProperty('mcVersion').orElse('26.3').get()
+def mcVersion = providers.gradleProperty('targetMinecraft').orElse('26.3').get()
 def loaderVersions = ['26.1':'0.18.4','26.2':'0.19.3','26.3':'0.19.5']
 def apiVersions = ['26.1':'0.145.1+26.1','26.2':'0.161.0+26.2','26.3':'0.161.0+26.3']
 if (!loaderVersions.containsKey(mcVersion)) throw new GradleException("Unsupported Fabric version: " + mcVersion)

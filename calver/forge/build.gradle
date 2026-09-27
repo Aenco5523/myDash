@@ -4,7 +4,7 @@ plugins {
 }
 group = 'dev.aenco.mydash'
 version = 'v2.1'
-def mcVersion = providers.gradleProperty('mcVersion').orElse('26.3').get()
+def mcVersion = providers.gradleProperty('targetMinecraft').orElse('26.3').get()
 def forgeVersions = ['26.1':'62.0.9','26.2':'65.0.9','26.3':'66.0.4']
 def loaderMajors = ['26.1':'62','26.2':'65','26.3':'66']
 def mcRanges = ['26.1':'[26.1,26.2)','26.2':'[26.2,26.3)','26.3':'[26.3,26.4)']

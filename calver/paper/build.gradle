@@ -1,7 +1,7 @@
 plugins { id 'java' }
 group = 'dev.aenco.mydash'
 version = 'v2.1'
-def mcVersion = providers.gradleProperty('mcVersion').orElse('26.3').get()
+def mcVersion = providers.gradleProperty('targetMinecraft').orElse('26.3').get()
 if (!['26.1','26.2','26.3'].contains(mcVersion)) throw new GradleException("Unsupported Paper version: " + mcVersion)
 repositories {
     mavenCentral()
