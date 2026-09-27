@@ -35,7 +35,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Repair corrupted Maven toolchain metadata
-        shell: pwsh
+        shell: powershell
         run: |
           $toolchains = Join-Path $HOME ".m2\toolchains.xml"
           if (Test-Path $toolchains) {
@@ -60,7 +60,7 @@ jobs:
           validate-wrappers: false
 
       - name: Show local Gradle cache
-        shell: pwsh
+        shell: powershell
         run: |
           Write-Host "GRADLE_USER_HOME=$HOME\.gradle"
           if (Test-Path (Join-Path $HOME ".gradle\caches")) {
@@ -81,7 +81,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Repair corrupted Maven toolchain metadata
-        shell: pwsh
+        shell: powershell
         run: |
           $toolchains = Join-Path $HOME ".m2\toolchains.xml"
           if (Test-Path $toolchains) {
