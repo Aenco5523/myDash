@@ -33,7 +33,7 @@
         <a class="nav" href="#console" data-view-link="console"><span>›_</span>실시간 콘솔 <em>beta</em></a>
         <a class="nav" href="#players" data-view-link="players"><span>♙</span>플레이어 관리</a>
         <a class="nav disabled" href="#"><span>□</span>모드 및 파일 <em>soon</em></a>
-        <a class="nav disabled" href="#"><span>⚙</span>설정 <em>soon</em></a>
+        <a class="nav" href="#settings" data-view-link="settings"><span>⚙</span>설정</a>
       </nav>
       <div class="side-note">
         <span class="pulse"></span>
@@ -163,6 +163,84 @@
           </div>
           <div class="player-list" id="player-list"></div>
           <div class="empty-state" id="player-empty" hidden>현재 접속 중인 플레이어가 없습니다.</div>
+        </section>
+      </section>
+
+      <section class="view" id="view-settings" data-view="settings" hidden>
+        <header>
+          <div>
+            <p class="eyebrow">MYDASH SETTINGS</p>
+            <h1>myDash 설정</h1>
+            <p>웹 서버 연결 설정과 관리자 인증을 관리합니다.</p>
+          </div>
+          <span class="chip">재시작 적용</span>
+        </header>
+
+        <div class="settings-grid">
+          <section class="settings-card">
+            <div class="settings-card-head">
+              <div>
+                <p class="eyebrow">WEB SERVER</p>
+                <h3>웹 서버 연결</h3>
+              </div>
+              <span class="settings-icon">⌁</span>
+            </div>
+
+            <form id="settings-form" class="settings-form">
+              <label>
+                <span>바인드 주소</span>
+                <input id="setting-bind" type="text" maxlength="255" autocomplete="off" placeholder="127.0.0.1">
+                <small>기본값은 로컬 접속만 허용하는 127.0.0.1입니다.</small>
+              </label>
+
+              <label>
+                <span>포트</span>
+                <input id="setting-port" type="number" min="1" max="65535" inputmode="numeric">
+                <small>변경 후 Minecraft 서버를 재시작해야 적용됩니다.</small>
+              </label>
+
+              <label class="toggle-row">
+                <div>
+                  <span>외부 접속 허용</span>
+                  <small>0.0.0.0 또는 외부 인터페이스 사용 시에만 켜세요.</small>
+                </div>
+                <input id="setting-remote" type="checkbox">
+              </label>
+
+              <div class="settings-actions">
+                <button type="submit">설정 저장</button>
+                <span id="settings-result"></span>
+              </div>
+            </form>
+          </section>
+
+          <section class="settings-card">
+            <div class="settings-card-head">
+              <div>
+                <p class="eyebrow">SECURITY</p>
+                <h3>관리자 토큰</h3>
+              </div>
+              <span class="settings-icon">⌾</span>
+            </div>
+
+            <p class="settings-description">
+              현재 토큰은 서버에 원문으로 저장되지 않습니다. 재발급하면 기존 토큰은 즉시 사용할 수 없게 됩니다.
+            </p>
+
+            <button class="danger-soft-button" id="rotate-token" type="button">관리자 토큰 재발급</button>
+
+            <div class="token-result" id="token-result" hidden>
+              <span>새 관리자 토큰</span>
+              <code id="new-token"></code>
+              <small>이 값은 지금 한 번만 확인하고 안전한 곳에 보관하세요.</small>
+            </div>
+          </section>
+        </div>
+
+        <section class="settings-card network-warning">
+          <p class="eyebrow">SECURITY NOTE</p>
+          <h3>인터넷에 직접 노출하지 않는 것을 권장합니다.</h3>
+          <p>외부 접속이 필요하면 HTTPS가 적용된 리버스 프록시나 터널 뒤에서 myDash를 운영하세요.</p>
         </section>
       </section>
 
