@@ -1,6 +1,6 @@
 package dev.aenco.mydash.core;
 
-import java.util.List;
+import dev.aenco.mydash.api.DashboardExtension;\n\nimport java.util.Collection;\nimport java.util.List;
 
 final class Json {
     private Json() {}
@@ -25,6 +25,26 @@ final class Json {
                 .append("\"name\":\"").append(escape(player.name())).append("\",")
                 .append("\"operator\":").append(player.operator())
                 .append('}');
+        }
+        return json.append(']').toString();
+    }
+
+    static String extensions(Collection<DashboardExtension> extensions) {
+        StringBuilder json = new StringBuilder("[");
+        int index = 0;
+        for (DashboardExtension extension : extensions) {
+            if (index++ > 0) json.append(',');
+            json.append('{')
+                .append("\"id\":\"").append(escape(extension.id())).append("\",")
+                .append("\"displayName\":\"").append(escape(extension.displayName())).append("\",")
+                .append("\"route\":\"").append(escape(extension.route())).append("\",")
+                .append("\"permissions\":[");
+            int permissionIndex = 0;
+            for (String permission : extension.permissions()) {
+                if (permissionIndex++ > 0) json.append(',');
+                json.append("\"").append(escape(permission)).append("\"");
+            }
+            json.append("]}");
         }
         return json.append(']').toString();
     }
