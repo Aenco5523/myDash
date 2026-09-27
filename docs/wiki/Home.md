@@ -37,3 +37,12 @@ Browser
 The bundled dashboard exposes server overview, live console, player management, server settings, a safe file editor, myDash settings, and extension pages.
 
 The default listener is `127.0.0.1:8765`.
+
+
+## Languages
+
+The dashboard detects the browser language on first use and includes a persistent language selector.
+
+Supported locales: English, 한국어, 日本語, 简体中文, 繁體中文, Español, Français, Deutsch, and Português (Brasil).
+
+English is used as the fallback for technical strings that do not yet have a locale-specific translation.
