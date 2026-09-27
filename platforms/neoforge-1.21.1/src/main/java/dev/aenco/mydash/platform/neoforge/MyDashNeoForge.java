@@ -23,7 +23,8 @@ import java.util.concurrent.CompletableFuture;
 
 @Mod(MyDashNeoForge.MOD_ID)
 public final class MyDashNeoForge {
-    public static final String MOD_ID = "mydash";\n
+    public static final String MOD_ID = "mydash";
+
     private MyDashCore core;
     private long startedAt;
 
