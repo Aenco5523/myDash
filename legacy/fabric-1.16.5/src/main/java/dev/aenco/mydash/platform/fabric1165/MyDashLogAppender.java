@@ -28,7 +28,7 @@ final class MyDashLogAppender extends AbstractAppender implements AutoCloseable 
             (Filter) null,
             (Layout<? extends Serializable>) PatternLayout.createDefaultLayout(),
             true,
-            Property.EMPTY_ARRAY
+            new Property[0]
         );
         this.core = core;
     }
