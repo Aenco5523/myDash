@@ -8,7 +8,7 @@ repositories {
     maven { url = 'https://repo.papermc.io/repository/maven-public/' }
 }
 def paperApiVersions = [
-    '26.1': '26.1.2-R0.1-SNAPSHOT',
+    '26.1': '26.1.2.build.+',
     '26.2': '26.2.build.+',
     '26.3': '26.3.build.+'
 ]
