@@ -32,7 +32,7 @@
         <a class="nav active" href="#overview" data-view-link="overview"><span>⌂</span>개요</a>
         <a class="nav" href="#console" data-view-link="console"><span>›_</span>실시간 콘솔 <em>beta</em></a>
         <a class="nav" href="#players" data-view-link="players"><span>♙</span>플레이어 관리</a>
-        <a class="nav disabled" href="#"><span>□</span>모드 및 파일 <em>soon</em></a>
+        <a class="nav" href="#server-config" data-view-link="server-config"><span>□</span>서버 환경 및 파일 설정</a>
         <a class="nav" href="#settings" data-view-link="settings"><span>⚙</span>설정</a>
       </nav>
       <div class="side-note">
@@ -163,6 +163,128 @@
           </div>
           <div class="player-list" id="player-list"></div>
           <div class="empty-state" id="player-empty" hidden>현재 접속 중인 플레이어가 없습니다.</div>
+        </section>
+      </section>
+
+      <section class="view" id="view-server-config" data-view="server-config" hidden>
+        <header>
+          <div>
+            <p class="eyebrow">SERVER ENVIRONMENT</p>
+            <h1>서버 환경 및 파일 설정</h1>
+            <p>자주 사용하는 server.properties 항목을 안전하게 관리합니다.</p>
+          </div>
+          <span class="chip">server.properties</span>
+        </header>
+
+        <section class="server-config-hero">
+          <div>
+            <p class="eyebrow">GENERAL SETTINGS</p>
+            <h3>서버 환경 설정</h3>
+            <p>포트, 플레이어 정원, 인증, 난이도 등 서버 기본 구성을 변경합니다.</p>
+          </div>
+          <div class="server-config-actions">
+            <button class="ghost-button" id="reload-server-properties" type="button">원래대로</button>
+            <button class="primary-button" id="save-server-properties" type="submit" form="server-properties-form">설정 저장</button>
+          </div>
+        </section>
+
+        <form class="server-properties-form" id="server-properties-form">
+          <section class="settings-card config-section">
+            <div class="settings-card-head">
+              <div>
+                <p class="eyebrow">NETWORK & ACCESS</p>
+                <h3>기본 네트워크 및 접속 설정</h3>
+              </div>
+              <span class="settings-icon">⌁</span>
+            </div>
+
+            <div class="field-grid">
+              <label class="wide-field">
+                <span>서버 설명 문구 (MOTD)</span>
+                <input id="server-motd" type="text" maxlength="512" autocomplete="off">
+                <small>서버 목록에 표시되는 설명입니다.</small>
+              </label>
+
+              <label>
+                <span>서버 포트</span>
+                <input id="server-game-port" type="number" min="1" max="65535" inputmode="numeric">
+                <small>server-port</small>
+              </label>
+
+              <label>
+                <span>최대 접속자</span>
+                <input id="server-max-players" type="number" min="1" max="100000" inputmode="numeric">
+                <small>max-players</small>
+              </label>
+
+              <label class="toggle-row wide-field config-toggle">
+                <div>
+                  <span>온라인 모드 (정품 인증)</span>
+                  <small>Mojang/Microsoft 계정 인증을 사용합니다.</small>
+                </div>
+                <input id="server-online-mode" type="checkbox">
+              </label>
+
+              <label class="toggle-row wide-field config-toggle">
+                <div>
+                  <span>화이트리스트 사용</span>
+                  <small>등록된 플레이어만 접속하도록 제한합니다.</small>
+                </div>
+                <input id="server-whitelist" type="checkbox">
+              </label>
+            </div>
+          </section>
+
+          <section class="settings-card config-section">
+            <div class="settings-card-head">
+              <div>
+                <p class="eyebrow">GAMEPLAY MODE</p>
+                <h3>게임플레이 환경 설정</h3>
+              </div>
+              <span class="settings-icon">◇</span>
+            </div>
+
+            <div class="field-grid">
+              <label>
+                <span>기본 난이도</span>
+                <select id="server-difficulty">
+                  <option value="peaceful">평화로움 (Peaceful)</option>
+                  <option value="easy">쉬움 (Easy)</option>
+                  <option value="normal">보통 (Normal)</option>
+                  <option value="hard">어려움 (Hard)</option>
+                </select>
+                <small>difficulty</small>
+              </label>
+
+              <label>
+                <span>기본 게임 모드</span>
+                <select id="server-gamemode">
+                  <option value="survival">서바이벌 (Survival)</option>
+                  <option value="creative">크리에이티브 (Creative)</option>
+                  <option value="adventure">모험 (Adventure)</option>
+                  <option value="spectator">관전 (Spectator)</option>
+                </select>
+                <small>gamemode</small>
+              </label>
+
+              <label class="toggle-row wide-field config-toggle">
+                <div>
+                  <span>하드코어 모드</span>
+                  <small>hardcore=true 설정을 사용합니다.</small>
+                </div>
+                <input id="server-hardcore" type="checkbox">
+              </label>
+            </div>
+          </section>
+        </form>
+
+        <section class="settings-card config-save-note">
+          <div>
+            <p class="eyebrow">APPLY CHANGES</p>
+            <h3>변경 내용은 서버 재시작 후 완전히 적용됩니다.</h3>
+            <p>myDash는 지정된 항목만 수정하며, 나머지 server.properties 값은 유지합니다.</p>
+          </div>
+          <span id="server-properties-result"></span>
         </section>
       </section>
 
