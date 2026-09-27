@@ -75,6 +75,7 @@ function selectView(name) {
   setActiveNav('[data-view-link="' + name + '"]');
 
   if (name === "players") refreshPlayers();
+  if (name === "server-config") refreshServerProperties();
   if (name === "settings") refreshSettings();
 }
 
@@ -237,6 +238,36 @@ async function refreshExtensions() {
 
     nav.appendChild(link);
   });
+}
+
+async function refreshServerProperties() {
+  if (!token()) return;
+
+  const result = byId("server-properties-result");
+
+  try {
+    const response = await api("/api/v1/server-properties");
+    const settings = await response.json();
+
+    if (!response.ok) {
+      throw new Error(settings.error || ("HTTP " + response.status));
+    }
+
+    byId("server-motd").value = settings.motd;
+    byId("server-game-port").value = String(settings.serverPort);
+    byId("server-max-players").value = String(settings.maxPlayers);
+    byId("server-online-mode").checked = Boolean(settings.onlineMode);
+    byId("server-whitelist").checked = Boolean(settings.whiteList);
+    byId("server-difficulty").value = settings.difficulty;
+    byId("server-gamemode").value = settings.gamemode;
+    byId("server-hardcore").checked = Boolean(settings.hardcore);
+    result.textContent = "";
+  } catch (error) {
+    if (error.message !== "unauthorized") {
+      result.textContent =
+        "server.properties를 불러오지 못했습니다: " + error.message;
+    }
+  }
 }
 
 async function refreshSettings() {
@@ -402,6 +433,68 @@ byId("lock-button").addEventListener("click", () => {
 });
 
 byId("refresh-players").addEventListener("click", refreshPlayers);
+byId("reload-server-properties").addEventListener("click", refreshServerProperties);
+
+byId("server-properties-form").addEventListener("submit", async event => {
+  event.preventDefault();
+
+  const motd = byId("server-motd").value;
+  const serverPort = Number(byId("server-game-port").value);
+  const maxPlayers = Number(byId("server-max-players").value);
+  const onlineMode = byId("server-online-mode").checked;
+  const whiteList = byId("server-whitelist").checked;
+  const difficulty = byId("server-difficulty").value;
+  const gamemode = byId("server-gamemode").value;
+  const hardcore = byId("server-hardcore").checked;
+  const result = byId("server-properties-result");
+
+  if (
+    motd.length > 512 ||
+    motd.includes("\n") ||
+    motd.includes("\r") ||
+    !Number.isInteger(serverPort) ||
+    serverPort < 1 ||
+    serverPort > 65535 ||
+    !Number.isInteger(maxPlayers) ||
+    maxPlayers < 1 ||
+    maxPlayers > 100000
+  ) {
+    result.textContent = "입력한 서버 설정 값을 확인하세요.";
+    return;
+  }
+
+  try {
+    const response = await api("/api/v1/server-properties", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        motd,
+        serverPort,
+        maxPlayers,
+        onlineMode,
+        whiteList,
+        difficulty,
+        gamemode,
+        hardcore
+      })
+    });
+
+    const body = await response.json();
+
+    if (!response.ok) {
+      throw new Error(body.error || ("HTTP " + response.status));
+    }
+
+    result.textContent = body.restartRequired
+      ? "저장됨 · 서버 재시작 후 적용"
+      : "저장됨";
+  } catch (error) {
+    if (error.message !== "unauthorized") {
+      result.textContent =
+        "server.properties 저장 실패: " + error.message;
+    }
+  }
+});
 
 byId("settings-form").addEventListener("submit", async event => {
   event.preventDefault();
