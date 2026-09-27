@@ -381,29 +381,72 @@ function renderPlayers(players) {
     const actions = document.createElement("div");
     actions.className = "player-actions";
 
+    const op = document.createElement("button");
+    op.className = "player-action-button";
+    op.type = "button";
+    op.textContent = player.operator ? "OP 해제" : "OP 부여";
+    op.addEventListener("click", () =>
+      playerAction(player, player.operator ? "deop" : "op")
+    );
+
+    const whitelistAdd = document.createElement("button");
+    whitelistAdd.className = "player-action-button";
+    whitelistAdd.type = "button";
+    whitelistAdd.textContent = "화이트리스트 +";
+    whitelistAdd.addEventListener("click", () =>
+      playerAction(player, "whitelist-add")
+    );
+
+    const whitelistRemove = document.createElement("button");
+    whitelistRemove.className = "player-action-button";
+    whitelistRemove.type = "button";
+    whitelistRemove.textContent = "화이트리스트 −";
+    whitelistRemove.addEventListener("click", () =>
+      playerAction(player, "whitelist-remove")
+    );
+
     const kick = document.createElement("button");
     kick.className = "danger-button";
     kick.type = "button";
     kick.textContent = "킥";
-    kick.addEventListener("click", () => kickPlayer(player));
+    kick.addEventListener("click", () => playerAction(player, "kick"));
 
-    actions.appendChild(kick);
+    const ban = document.createElement("button");
+    ban.className = "danger-button stronger";
+    ban.type = "button";
+    ban.textContent = "밴";
+    ban.addEventListener("click", () => playerAction(player, "ban"));
+
+    actions.append(op, whitelistAdd, whitelistRemove, kick, ban);
     row.append(identity, actions);
     list.appendChild(row);
   });
 }
 
-async function kickPlayer(player) {
-  const reason = window.prompt(
-    player.name + " 플레이어를 킥할 이유를 입력하세요.",
-    "Kicked by myDash"
-  );
+async function playerAction(player, action) {
+  let reason = "";
 
-  if (reason === null) return;
+  if (action === "kick" || action === "ban") {
+    const defaultReason = action === "kick"
+      ? "Kicked by myDash"
+      : "Banned by myDash";
+
+    reason = window.prompt(
+      player.name + " 플레이어의 " + (action === "kick" ? "킥" : "밴") + " 사유를 입력하세요.",
+      defaultReason
+    );
+
+    if (reason === null) return;
+  } else if (action === "deop") {
+    const confirmed = window.confirm(
+      player.name + " 플레이어의 OP 권한을 해제할까요?"
+    );
+    if (!confirmed) return;
+  }
 
   try {
     const response = await api(
-      "/api/v1/players/" + encodeURIComponent(player.uuid) + "/kick",
+      "/api/v1/players/" + encodeURIComponent(player.uuid) + "/" + action,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -422,7 +465,7 @@ async function kickPlayer(player) {
   } catch (error) {
     if (error.message !== "unauthorized") {
       byId("error").textContent =
-        "플레이어 킥 실패: " + error.message;
+        "플레이어 관리 작업 실패: " + error.message;
     }
   }
 }
