@@ -45,6 +45,7 @@ function selectView(name){
   const active=document.querySelector('[data-view-link="'+name+'"]');
   if(active)active.classList.add("active");
   if(name==="players") refreshPlayers();
+  if(name==="settings") refreshSettings();
 }
 
 function selectExtension(extension){
@@ -164,6 +165,26 @@ async function refreshExtensions(){
   }
 }
 
+async function refreshSettings(){
+  if(!token())return;
+
+  const result=byId("settings-result");
+  try{
+    const response=await api("/api/v1/settings");
+    const settings=await response.json();
+    if(!response.ok)throw new Error(settings.error||("HTTP "+response.status));
+
+    byId("setting-bind").value=settings.bindAddress;
+    byId("setting-port").value=String(settings.port);
+    byId("setting-remote").checked=Boolean(settings.allowRemote);
+    result.textContent="";
+  }catch(e){
+    if(e.message!=="unauthorized"){
+      result.textContent="설정을 불러오지 못했습니다: "+e.message;
+    }
+  }
+}
+
 async function refreshPlayers(){
   if(!token())return;
   const status=byId("player-list-status");
@@ -275,6 +296,59 @@ byId("lock-button").addEventListener("click",()=>{
 });
 
 byId("refresh-players").addEventListener("click",refreshPlayers);
+
+byId("settings-form").addEventListener("submit",async event=>{
+  event.preventDefault();
+
+  const bindAddress=byId("setting-bind").value.trim();
+  const port=Number(byId("setting-port").value);
+  const allowRemote=byId("setting-remote").checked;
+  const result=byId("settings-result");
+
+  if(!bindAddress||!Number.isInteger(port)||port<1||port>65535){
+    result.textContent="바인드 주소와 포트를 확인하세요.";
+    return;
+  }
+
+  if(bindAddress!=="127.0.0.1"&&bindAddress!=="::1"&&!allowRemote){
+    result.textContent="외부 주소를 사용하려면 외부 접속 허용을 켜야 합니다.";
+    return;
+  }
+
+  try{
+    const response=await api("/api/v1/settings",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({bindAddress,port,allowRemote})
+    });
+    const body=await response.json();
+    if(!response.ok)throw new Error(body.error||("HTTP "+response.status));
+    result.textContent=body.restartRequired?"저장됨 · 서버 재시작 후 적용":"저장됨";
+  }catch(e){
+    if(e.message!=="unauthorized"){
+      result.textContent="설정 저장 실패: "+e.message;
+    }
+  }
+});
+
+byId("rotate-token").addEventListener("click",async()=>{
+  const confirmed=window.confirm("관리자 토큰을 재발급하면 기존 토큰은 즉시 폐기됩니다. 계속할까요?");
+  if(!confirmed)return;
+
+  try{
+    const response=await api("/api/v1/auth/rotate",{method:"POST"});
+    const body=await response.json();
+    if(!response.ok)throw new Error(body.error||("HTTP "+response.status));
+
+    sessionStorage.setItem(TOKEN_KEY,body.token);
+    byId("new-token").textContent=body.token;
+    byId("token-result").hidden=false;
+  }catch(e){
+    if(e.message!=="unauthorized"){
+      byId("error").textContent="토큰 재발급 실패: "+e.message;
+    }
+  }
+});
 
 byId("command-form").addEventListener("submit",async event=>{
   event.preventDefault();
