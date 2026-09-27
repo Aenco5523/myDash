@@ -27,6 +27,7 @@ public final class MyDashNeoForge {
     public static final String MOD_ID = "mydash";
 
     private MyDashCore core;
+    private MyDashLogAppender logAppender;
     private long startedAt;
 
     public MyDashNeoForge(IEventBus modBus) {
@@ -116,8 +117,17 @@ public final class MyDashNeoForge {
         core = new MyDashCore(bridge, Paths.get("config", "mydash.properties"));
         try {
             core.start();
+            logAppender = MyDashLogAppender.install(core);
+            core.publishConsoleLine("INFO", "myDash", "Live console capture attached.");
         } catch (IOException | RuntimeException exception) {
-            core = null;
+            if (logAppender != null) {
+                logAppender.close();
+                logAppender = null;
+            }
+            if (core != null) {
+                core.stop();
+                core = null;
+            }
             throw new IllegalStateException("Failed to start myDash web server", exception);
         }
     }
@@ -127,6 +137,11 @@ public final class MyDashNeoForge {
     }
 
     private void stop() {
+        if (logAppender != null) {
+            logAppender.close();
+            logAppender = null;
+        }
+
         if (core != null) {
             core.stop();
             core = null;
