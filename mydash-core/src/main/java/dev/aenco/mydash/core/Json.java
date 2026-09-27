@@ -18,6 +18,23 @@ final class Json {
             + "}";
     }
 
+    static String serverProperties(ServerPropertiesSettings settings) {
+        return "{"
+            + "\"motd\":\"" + escape(settings.motd) + "\","
+            + "\"serverPort\":" + settings.serverPort + ","
+            + "\"maxPlayers\":" + settings.maxPlayers + ","
+            + "\"onlineMode\":" + settings.onlineMode + ","
+            + "\"whiteList\":" + settings.whiteList + ","
+            + "\"difficulty\":\"" + escape(settings.difficulty) + "\","
+            + "\"gamemode\":\"" + escape(settings.gamemode) + "\","
+            + "\"hardcore\":" + settings.hardcore
+            + "}";
+    }
+
+    static String serverPropertiesUpdated() {
+        return "{\"updated\":true,\"restartRequired\":true}";
+    }
+
     static String settings(MyDashConfig config) {
         return "{"
             + "\"bindAddress\":\"" + escape(config.bindAddress()) + "\","
