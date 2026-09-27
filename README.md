@@ -132,16 +132,15 @@ myDash exposes registered extensions through `GET /api/v1/extensions` and serves
 
 ## Developer documentation
 
-User-facing information stays in this README. Architecture, API, security, extension, build, and porting details live in the project documentation and Wiki source:
+User-facing information stays in this README. Architecture, API, security, extension, build, and porting details are currently maintained in the repository documentation:
 
-- [Wiki home](docs/wiki/Home.md)
 - [API reference](docs/API.md)
 - [Extension API](docs/EXTENSIONS.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Build and CI](docs/BUILDING.md)
 - [Compatibility](docs/COMPATIBILITY.md)
 
-The repository Wiki is enabled at `https://github.com/Aenco5523/myDash/wiki`. The Markdown under `docs/wiki/` is kept as the source copy for those pages.
+The Markdown under `docs/wiki/` is a prepared source set for the GitHub Wiki. It is not itself the GitHub Wiki.
 
 ## Builds and CI
 
