@@ -6,6 +6,8 @@ let extensionSignature = "";
 let consoleAbortController = null;
 let consoleReconnectTimer = null;
 let consoleLastId = 0;
+let fileCurrentPath = "";
+let fileSelectedPath = null;
 const MAX_CONSOLE_DOM_LINES = 500;
 
 function duration(ms) {
@@ -86,7 +88,10 @@ function selectView(name) {
   }
 
   if (name === "players") refreshPlayers();
-  if (name === "server-config") refreshServerProperties();
+  if (name === "server-config") {
+    refreshServerProperties();
+    refreshFiles(fileCurrentPath);
+  }
   if (name === "settings") refreshSettings();
 }
 
@@ -249,6 +254,196 @@ async function refreshExtensions() {
 
     nav.appendChild(link);
   });
+}
+
+function formatFileSize(bytes) {
+  const value = Number(bytes) || 0;
+  if (value < 1024) return value + " B";
+  if (value < 1024 * 1024) return (value / 1024).toFixed(1) + " KB";
+  return (value / (1024 * 1024)).toFixed(1) + " MB";
+}
+
+function resetFileEditor(message) {
+  fileSelectedPath = null;
+  byId("file-editor-name").textContent = "파일을 선택하세요";
+  byId("file-editor-content").value = "";
+  byId("file-editor-content").disabled = true;
+  byId("file-save").disabled = true;
+  byId("file-editor-status").textContent =
+    message || "편집 가능한 텍스트 파일을 선택하세요.";
+}
+
+function parentFilePath(path) {
+  if (!path) return "";
+  const parts = path.split("/").filter(Boolean);
+  parts.pop();
+  return parts.join("/");
+}
+
+async function refreshFiles(path) {
+  if (!token()) return;
+
+  const requestedPath = typeof path === "string" ? path : fileCurrentPath;
+  const list = byId("file-list");
+  const empty = byId("file-empty");
+
+  try {
+    const response = await api(
+      "/api/v1/files?path=" + encodeURIComponent(requestedPath || "")
+    );
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || ("HTTP " + response.status));
+    }
+
+    fileCurrentPath = data.path || "";
+    byId("file-current-path").textContent =
+      fileCurrentPath ? "/" + fileCurrentPath : "/";
+
+    list.replaceChildren();
+    empty.hidden = Array.isArray(data.entries) && data.entries.length > 0;
+
+    (data.entries || []).forEach(entry => {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "file-row";
+
+      if (entry.symlink) row.classList.add("blocked");
+
+      const left = document.createElement("span");
+      left.className = "file-row-name";
+
+      const icon = document.createElement("span");
+      icon.className = "file-row-icon";
+      icon.textContent = entry.symlink
+        ? "⊘"
+        : entry.directory
+          ? "▱"
+          : entry.name.toLowerCase().endsWith(".jar")
+            ? "◫"
+            : "◇";
+
+      const name = document.createElement("span");
+      name.textContent = entry.name;
+
+      const badge = document.createElement("em");
+      if (entry.symlink) {
+        badge.textContent = "차단됨";
+      } else if (entry.directory) {
+        badge.textContent = "폴더";
+      } else if (entry.editable) {
+        badge.textContent = "편집";
+      } else {
+        badge.textContent = "읽기 전용";
+      }
+
+      left.append(icon, name, badge);
+
+      const size = document.createElement("span");
+      size.className = "file-row-size";
+      size.textContent = entry.directory ? "—" : formatFileSize(entry.size);
+
+      row.append(left, size);
+
+      row.addEventListener("click", () => {
+        if (entry.symlink) {
+          resetFileEditor("심볼릭 링크는 보안상 열 수 없습니다.");
+          return;
+        }
+
+        if (entry.directory) {
+          resetFileEditor();
+          refreshFiles(entry.path);
+          return;
+        }
+
+        if (!entry.editable) {
+          resetFileEditor(
+            entry.name + " 파일은 목록 확인만 가능하며 웹에서 편집할 수 없습니다."
+          );
+          byId("file-editor-name").textContent = entry.name;
+          return;
+        }
+
+        openFile(entry);
+      });
+
+      list.appendChild(row);
+    });
+  } catch (error) {
+    if (error.message !== "unauthorized") {
+      empty.hidden = false;
+      empty.textContent = "파일 목록을 불러오지 못했습니다.";
+      byId("error").textContent =
+        "파일 탐색기 오류: " + error.message;
+    }
+  }
+}
+
+async function openFile(entry) {
+  try {
+    const response = await api(
+      "/api/v1/files/content?path=" + encodeURIComponent(entry.path)
+    );
+
+    if (!response.ok) {
+      let message = "HTTP " + response.status;
+      try {
+        const body = await response.json();
+        message = body.error || message;
+      } catch (ignored) {
+      }
+      throw new Error(message);
+    }
+
+    const content = await response.text();
+
+    fileSelectedPath = entry.path;
+    byId("file-editor-name").textContent = entry.name;
+    byId("file-editor-content").value = content;
+    byId("file-editor-content").disabled = false;
+    byId("file-save").disabled = false;
+    byId("file-editor-status").textContent =
+      "편집 중 · 저장 시 기존 파일은 .mydash-backups에 백업됩니다.";
+  } catch (error) {
+    if (error.message !== "unauthorized") {
+      resetFileEditor("파일을 열지 못했습니다: " + error.message);
+    }
+  }
+}
+
+async function saveCurrentFile() {
+  if (!fileSelectedPath) return;
+
+  const content = byId("file-editor-content").value;
+  const status = byId("file-editor-status");
+  status.textContent = "저장하는 중…";
+
+  try {
+    const response = await api(
+      "/api/v1/files/content?path=" + encodeURIComponent(fileSelectedPath),
+      {
+        method: "PUT",
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+        body: content
+      }
+    );
+
+    const body = await response.json();
+
+    if (!response.ok) {
+      throw new Error(body.error || ("HTTP " + response.status));
+    }
+
+    status.textContent =
+      "저장 완료 · 기존 파일은 .mydash-backups에 백업되었습니다.";
+    await refreshFiles(fileCurrentPath);
+  } catch (error) {
+    if (error.message !== "unauthorized") {
+      status.textContent = "파일 저장 실패: " + error.message;
+    }
+  }
 }
 
 async function refreshServerProperties() {
@@ -506,6 +701,12 @@ byId("clear-console").addEventListener("click", () => {
 
 byId("refresh-players").addEventListener("click", refreshPlayers);
 byId("reload-server-properties").addEventListener("click", refreshServerProperties);
+byId("file-refresh").addEventListener("click", () => refreshFiles(fileCurrentPath));
+byId("file-up").addEventListener("click", () => {
+  resetFileEditor();
+  refreshFiles(parentFilePath(fileCurrentPath));
+});
+byId("file-save").addEventListener("click", saveCurrentFile);
 
 byId("server-properties-form").addEventListener("submit", async event => {
   event.preventDefault();
