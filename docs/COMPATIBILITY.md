@@ -6,6 +6,7 @@ The first buildable targets are used to validate the shared architecture before 
 |---|---:|---|
 | NeoForge | 1.21.1 | Initial implementation |
 | Fabric | 1.21.1 | Initial implementation |
+| Paper | 1.21.1 | Initial implementation |
 | Forge | 1.16.5 | Planned |
 | Fabric | 1.16.5 | Planned |
 | Paper | 1.16.5 | Planned |
