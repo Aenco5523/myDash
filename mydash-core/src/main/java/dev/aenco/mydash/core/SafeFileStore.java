@@ -254,16 +254,14 @@ final class SafeFileStore {
         int slash = normalized.indexOf('/');
         if (slash >= 0) first = normalized.substring(0, slash);
 
-        String firstLower = first.toLowerCase(Locale.ROOT);
-        if ("config".equals(firstLower) || "mods".equals(firstLower)) return true;
+        if ("config".equals(first) || "mods".equals(first)) return true;
 
-        if ("world".equals(firstLower)) {
-            String lower = normalized.toLowerCase(Locale.ROOT);
-            return "world/serverconfig".equals(lower)
-                || lower.startsWith("world/serverconfig/");
+        if ("world".equals(first)) {
+            return "world/serverconfig".equals(normalized)
+                || normalized.startsWith("world/serverconfig/");
         }
 
-        return ROOT_FILES.contains(normalized.toLowerCase(Locale.ROOT));
+        return ROOT_FILES.contains(normalized);
     }
 
     private static String cleanRelative(String value) throws IOException {
