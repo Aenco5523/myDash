@@ -4,10 +4,9 @@ import dev.aenco.mydash.core.MyDashCore;
 import dev.aenco.mydash.core.PlayerSnapshot;
 import dev.aenco.mydash.core.ServerBridge;
 import dev.aenco.mydash.core.ServerSnapshot;
-import net.minecraft.SharedConstants;
-import net.minecraft.network.chat.TextComponent;
+import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.server.FMLServerStartedEvent;
@@ -46,7 +45,7 @@ public final class MyDashForge1165 {
             public ServerSnapshot snapshot() {
                 return new ServerSnapshot(
                     "Forge",
-                    SharedConstants.getCurrentVersion().getName(),
+                    server.getServerVersion(),
                     server.getPlayerCount(),
                     server.getMaxPlayers(),
                     System.currentTimeMillis() - startedAt
@@ -78,7 +77,7 @@ public final class MyDashForge1165 {
                 server.execute(() -> {
                     try {
                         List<PlayerSnapshot> result = new ArrayList<PlayerSnapshot>();
-                        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                        for (ServerPlayerEntity player : server.getPlayerList().getPlayers()) {
                             result.add(new PlayerSnapshot(
                                 player.getUUID(),
                                 player.getGameProfile().getName(),
@@ -98,12 +97,12 @@ public final class MyDashForge1165 {
                 CompletableFuture<Boolean> future = new CompletableFuture<Boolean>();
                 server.execute(() -> {
                     try {
-                        ServerPlayer player = server.getPlayerList().getPlayer(uuid);
+                        ServerPlayerEntity player = server.getPlayerList().getPlayer(uuid);
                         if (player == null) {
                             future.complete(false);
                             return;
                         }
-                        player.connection.disconnect(new TextComponent(reason));
+                        player.connection.disconnect(new StringTextComponent(reason));
                         future.complete(true);
                     } catch (Throwable throwable) {
                         future.completeExceptionally(throwable);
