@@ -12,20 +12,20 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
+import dev.aenco.mydash.api.DashboardExtension;\n\nimport java.util.Collection;\nimport java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.TimeoutException;\nimport java.util.function.Supplier;
 
 final class EmbeddedDashboardServer {
     private static final int MAX_BODY_BYTES = 16 * 1024;
 
     private final ServerBridge bridge;
     private final MyDashConfig config;
-    private final MyDashSecurity security;
+    private final MyDashSecurity security;\n    private final Supplier<Collection<DashboardExtension>> extensions;
 
     private HttpServer server;
     private ExecutorService executor;
@@ -60,6 +60,7 @@ final class EmbeddedDashboardServer {
         server.createContext("/api/v1/server", this::serverInfo);
         server.createContext("/api/v1/console", this::console);
         server.createContext("/api/v1/players", this::players);
+        server.createContext("/api/v1/extensions", this::extensions);
         server.createContext("/", new StaticHandler());
 
         server.start();
@@ -81,6 +82,12 @@ final class EmbeddedDashboardServer {
         if (!authorize(exchange)) return;
         if (!method(exchange, "GET")) return;
         write(exchange, 200, "application/json; charset=utf-8", Json.server(bridge.snapshot()));
+    }
+
+    private void extensions(HttpExchange exchange) throws IOException {
+        if (!authorize(exchange)) return;
+        if (!method(exchange, "GET")) return;
+        write(exchange, 200, "application/json; charset=utf-8", Json.extensions(extensions.get()));
     }
 
     private void console(HttpExchange exchange) throws IOException {
