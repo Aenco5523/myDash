@@ -66,8 +66,8 @@ myDash-{platform}-{minecraftVersion}-v{myDashVersion}.jar
 Current examples:
 
 ```text
-myDash-neoforge-1.21.1-v2.1.0.jar
-myDash-fabric-1.21.1-v2.1.0.jar
+myDash-neoforge-1.21.1-v2.1.jar
+myDash-fabric-1.21.1-v2.1.jar
 ```
 
-Normal branch builds only verify compilation. Tag builds such as `v2.1.0` rebuild all supported targets and upload the JARs directly to the GitHub Release, avoiding temporary Actions artifact storage.
+Normal branch builds only verify compilation. Tag builds such as `v2.1` rebuild all supported targets and upload the JARs directly to the GitHub Release, avoiding temporary Actions artifact storage.
