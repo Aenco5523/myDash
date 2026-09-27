@@ -75,10 +75,11 @@ public final class MyDashNeoForgeCalver {
                     try {
                         List<PlayerSnapshot> result = new ArrayList<PlayerSnapshot>();
                         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                            var identity = player.nameAndId();
                             result.add(new PlayerSnapshot(
-                                player.getUUID(),
-                                player.getGameProfile().getName(),
-                                server.getPlayerList().isOp(player.getGameProfile())
+                                identity.id(),
+                                identity.name(),
+                                server.getPlayerList().isOp(identity)
                             ));
                         }
                         future.complete(result);

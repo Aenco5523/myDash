@@ -212,18 +212,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: "Forge 26.1", path: "calver/forge", mc: "26.1" }
-          - { name: "Forge 26.2", path: "calver/forge", mc: "26.2" }
-          - { name: "Forge 26.3", path: "calver/forge", mc: "26.3" }
-          - { name: "NeoForge 26.1", path: "calver/neoforge", mc: "26.1" }
-          - { name: "NeoForge 26.2", path: "calver/neoforge", mc: "26.2" }
-          - { name: "NeoForge 26.3", path: "calver/neoforge", mc: "26.3" }
-          - { name: "Fabric 26.1", path: "calver/fabric", mc: "26.1" }
-          - { name: "Fabric 26.2", path: "calver/fabric", mc: "26.2" }
-          - { name: "Fabric 26.3", path: "calver/fabric", mc: "26.3" }
-          - { name: "Paper 26.1", path: "calver/paper", mc: "26.1" }
-          - { name: "Paper 26.2", path: "calver/paper", mc: "26.2" }
-          - { name: "Paper 26.3", path: "calver/paper", mc: "26.3" }
+          - { name: "Forge 26.1", path: "calver/forge", mc: "26.1", gradle: "8.12.1", loom: "unused" }
+          - { name: "Forge 26.2", path: "calver/forge", mc: "26.2", gradle: "9.5.0", loom: "unused" }
+          - { name: "Forge 26.3", path: "calver/forge", mc: "26.3", gradle: "9.7.1", loom: "unused" }
+          - { name: "NeoForge 26.1", path: "calver/neoforge", mc: "26.1", gradle: "9.2.1", loom: "unused" }
+          - { name: "NeoForge 26.2", path: "calver/neoforge", mc: "26.2", gradle: "9.2.1", loom: "unused" }
+          - { name: "NeoForge 26.3", path: "calver/neoforge", mc: "26.3", gradle: "9.2.1", loom: "unused" }
+          - { name: "Fabric 26.1", path: "calver/fabric", mc: "26.1", gradle: "9.4.0", loom: "1.15-SNAPSHOT" }
+          - { name: "Fabric 26.2", path: "calver/fabric", mc: "26.2", gradle: "9.5.1", loom: "1.17-SNAPSHOT" }
+          - { name: "Fabric 26.3", path: "calver/fabric", mc: "26.3", gradle: "9.6.0", loom: "1.17-SNAPSHOT" }
+          - { name: "Paper 26.1", path: "calver/paper", mc: "26.1", gradle: "9.4.0", loom: "unused" }
+          - { name: "Paper 26.2", path: "calver/paper", mc: "26.2", gradle: "9.5.1", loom: "unused" }
+          - { name: "Paper 26.3", path: "calver/paper", mc: "26.3", gradle: "9.6.0", loom: "unused" }
 
     steps:
       - uses: actions/checkout@v4
@@ -243,15 +243,15 @@ jobs:
           distribution: temurin
           java-version: "25"
 
-      - name: Set up Gradle 9.6.0
+      - name: Set up Gradle ${{ matrix.gradle }}
         uses: gradle/actions/setup-gradle@v6
         with:
-          gradle-version: "9.6.0"
+          gradle-version: ${{ matrix.gradle }}
           cache-disabled: true
           validate-wrappers: false
 
       - name: Build ${{ matrix.name }}
-        run: gradle -p ${{ matrix.path }} build -PtargetMinecraft=${{ matrix.mc }} --build-cache --stacktrace
+        run: gradle -p ${{ matrix.path }} build -PtargetMinecraft=${{ matrix.mc }} -PloomVersion=${{ matrix.loom }} --build-cache --stacktrace
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')

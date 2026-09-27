@@ -1,7 +1,13 @@
+def loomVersion = providers.gradleProperty('loomVersion').orElse('1.17-SNAPSHOT').get()
+
 pluginManagement {
     repositories {
         maven { url = 'https://maven.fabricmc.net/' }
         gradlePluginPortal()
     }
+    plugins {
+        id 'net.fabricmc.fabric-loom' version loomVersion
+    }
 }
+
 rootProject.name = 'myDash-fabric-calver'
