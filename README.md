@@ -101,6 +101,24 @@ Configuration is stored in:
 config/mydash.properties
 ```
 
+## Languages
+
+The myDash dashboard detects the browser language on first use and includes a persistent language selector.
+
+Supported UI locales:
+
+- English
+- 한국어
+- 日本語
+- 简体中文
+- 繁體中文
+- Español
+- Français
+- Deutsch
+- Português (Brasil)
+
+English is used as the fallback for technical strings that do not yet have a locale-specific translation.
+
 ## Compatibility
 
 Build-verified targets:
