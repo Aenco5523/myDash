@@ -280,6 +280,54 @@
           </section>
         </form>
 
+        <section class="file-manager">
+          <div class="file-manager-head">
+            <div>
+              <p class="eyebrow">SAFE FILE MANAGER</p>
+              <h3>서버 파일 탐색기</h3>
+              <p>허용된 설정 경로와 모드 파일 목록만 표시합니다.</p>
+            </div>
+            <div class="file-manager-tools">
+              <button class="ghost-button" id="file-up" type="button">상위 폴더</button>
+              <button class="ghost-button" id="file-refresh" type="button">새로고침</button>
+            </div>
+          </div>
+
+          <div class="file-path-bar">
+            <span>경로</span>
+            <code id="file-current-path">/</code>
+          </div>
+
+          <div class="file-manager-grid">
+            <div class="file-browser">
+              <div class="file-list-head">
+                <span>이름</span>
+                <span>크기</span>
+              </div>
+              <div class="file-list" id="file-list"></div>
+              <div class="empty-state" id="file-empty" hidden>표시할 파일이 없습니다.</div>
+            </div>
+
+            <div class="file-editor">
+              <div class="file-editor-head">
+                <div>
+                  <span class="file-editor-label">EDITOR</span>
+                  <strong id="file-editor-name">파일을 선택하세요</strong>
+                </div>
+                <button class="primary-button" id="file-save" type="button" disabled>파일 저장</button>
+              </div>
+
+              <textarea id="file-editor-content" spellcheck="false" disabled
+                        placeholder="편집 가능한 텍스트 파일을 선택하면 내용이 표시됩니다."></textarea>
+
+              <div class="file-editor-foot">
+                <span id="file-editor-status">JAR 등 바이너리 파일은 목록 확인만 가능합니다.</span>
+                <span>최대 편집 크기 1 MB</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section class="settings-card config-save-note">
           <div>
             <p class="eyebrow">APPLY CHANGES</p>
