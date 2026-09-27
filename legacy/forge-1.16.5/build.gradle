@@ -28,12 +28,10 @@ minecraft {
 sourceSets {
     main {
         java {
-            srcDir 'src/main/java'
             srcDir '../../mydash-api/src/main/java'
             srcDir '../../mydash-core/src/main/java'
         }
         resources {
-            srcDir 'src/main/resources'
             srcDir '../../mydash-core/src/main/resources'
         }
     }
