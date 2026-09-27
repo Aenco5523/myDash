@@ -10,6 +10,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: mydash-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 # Every build and release job runs only on self-hosted runners.
 # Gradle's persistent ~/.gradle directory is reused as the local dependency,
 # Minecraft mapping and build cache. GitHub Actions cache storage is disabled.
