@@ -1,0 +1,19 @@
+plugins {
+    id 'base'
+}
+
+allprojects {
+    group = providers.gradleProperty('mydash_group').get()
+    version = providers.gradleProperty('mydash_version').get()
+
+    repositories {
+        mavenCentral()
+    }
+}
+
+tasks.register('buildSupported') {
+    group = 'build'
+    description = 'Builds every currently implemented myDash platform target.'
+    dependsOn ':platforms:neoforge-1.21.1:build'
+    dependsOn ':platforms:fabric-1.21.1:build'
+}
