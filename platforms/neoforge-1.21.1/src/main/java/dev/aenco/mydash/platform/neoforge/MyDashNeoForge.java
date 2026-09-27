@@ -1,10 +1,13 @@
 package dev.aenco.mydash.platform.neoforge;
 
 import dev.aenco.mydash.core.MyDashCore;
+import dev.aenco.mydash.core.PlayerSnapshot;
 import dev.aenco.mydash.core.ServerBridge;
 import dev.aenco.mydash.core.ServerSnapshot;
 import net.minecraft.SharedConstants;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.NeoForge;
@@ -13,12 +16,14 @@ import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 @Mod(MyDashNeoForge.MOD_ID)
 public final class MyDashNeoForge {
-    public static final String MOD_ID = "mydash";
-
+    public static final String MOD_ID = "mydash";\n
     private MyDashCore core;
     private long startedAt;
 
@@ -28,7 +33,10 @@ public final class MyDashNeoForge {
     }
 
     private void onServerStarted(ServerStartedEvent event) {
-        MinecraftServer server = event.getServer();
+        start(event.getServer());
+    }
+
+    private void start(MinecraftServer server) {
         startedAt = System.currentTimeMillis();
 
         ServerBridge bridge = new ServerBridge() {
@@ -56,6 +64,46 @@ public final class MyDashNeoForge {
                 });
                 return future;
             }
+
+            @Override
+            public CompletableFuture<List<PlayerSnapshot>> players() {
+                CompletableFuture<List<PlayerSnapshot>> future = new CompletableFuture<List<PlayerSnapshot>>();
+                server.execute(() -> {
+                    try {
+                        List<PlayerSnapshot> result = new ArrayList<PlayerSnapshot>();
+                        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                            result.add(new PlayerSnapshot(
+                                player.getUUID(),
+                                player.getGameProfile().getName(),
+                                server.getPlayerList().isOp(player.getGameProfile())
+                            ));
+                        }
+                        future.complete(result);
+                    } catch (Throwable throwable) {
+                        future.completeExceptionally(throwable);
+                    }
+                });
+                return future;
+            }
+
+            @Override
+            public CompletableFuture<Boolean> kickPlayer(UUID uuid, String reason) {
+                CompletableFuture<Boolean> future = new CompletableFuture<Boolean>();
+                server.execute(() -> {
+                    try {
+                        ServerPlayer player = server.getPlayerList().getPlayer(uuid);
+                        if (player == null) {
+                            future.complete(false);
+                            return;
+                        }
+                        player.connection.disconnect(Component.literal(reason));
+                        future.complete(true);
+                    } catch (Throwable throwable) {
+                        future.completeExceptionally(throwable);
+                    }
+                });
+                return future;
+            }
         };
 
         core = new MyDashCore(bridge, Paths.get("config", "mydash.properties"));
@@ -68,6 +116,10 @@ public final class MyDashNeoForge {
     }
 
     private void onServerStopping(ServerStoppingEvent event) {
+        stop();
+    }
+
+    private void stop() {
         if (core != null) {
             core.stop();
             core = null;
