@@ -1,23 +1,33 @@
 package dev.aenco.mydash.platform.fabric;
 
 import dev.aenco.mydash.core.MyDashCore;
+import dev.aenco.mydash.core.PlayerSnapshot;
 import dev.aenco.mydash.core.ServerBridge;
 import dev.aenco.mydash.core.ServerSnapshot;
+import net.minecraft.SharedConstants;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.minecraft.SharedConstants;
-import net.minecraft.server.MinecraftServer;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
+
 public final class MyDashFabric implements ModInitializer {
+
     private MyDashCore core;
     private long startedAt;
 
-    @Override
-    public void onInitialize() {
+    public MyDashFabric() {
+    }
+
+    @Override\n    public void onInitialize() {
         ServerLifecycleEvents.SERVER_STARTED.register(this::start);
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> stop());
     }
@@ -44,6 +54,46 @@ public final class MyDashFabric implements ModInitializer {
                     try {
                         server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), command);
                         future.complete(null);
+                    } catch (Throwable throwable) {
+                        future.completeExceptionally(throwable);
+                    }
+                });
+                return future;
+            }
+
+            @Override
+            public CompletableFuture<List<PlayerSnapshot>> players() {
+                CompletableFuture<List<PlayerSnapshot>> future = new CompletableFuture<List<PlayerSnapshot>>();
+                server.execute(() -> {
+                    try {
+                        List<PlayerSnapshot> result = new ArrayList<PlayerSnapshot>();
+                        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                            result.add(new PlayerSnapshot(
+                                player.getUUID(),
+                                player.getGameProfile().getName(),
+                                server.getPlayerList().isOp(player.getGameProfile())
+                            ));
+                        }
+                        future.complete(result);
+                    } catch (Throwable throwable) {
+                        future.completeExceptionally(throwable);
+                    }
+                });
+                return future;
+            }
+
+            @Override
+            public CompletableFuture<Boolean> kickPlayer(UUID uuid, String reason) {
+                CompletableFuture<Boolean> future = new CompletableFuture<Boolean>();
+                server.execute(() -> {
+                    try {
+                        ServerPlayer player = server.getPlayerList().getPlayer(uuid);
+                        if (player == null) {
+                            future.complete(false);
+                            return;
+                        }
+                        player.connection.disconnect(Component.literal(reason));
+                        future.complete(true);
                     } catch (Throwable throwable) {
                         future.completeExceptionally(throwable);
                     }
