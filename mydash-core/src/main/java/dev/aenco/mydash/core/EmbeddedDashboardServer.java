@@ -34,6 +34,7 @@ final class EmbeddedDashboardServer {
     private final MyDashConfig config;
     private final MyDashSecurity security;
     private final Supplier<Collection<DashboardExtension>> extensions;
+    private final ServerPropertiesStore serverProperties;
 
     private HttpServer server;
     private ExecutorService executor;
@@ -48,6 +49,7 @@ final class EmbeddedDashboardServer {
         this.config = config;
         this.security = security;
         this.extensions = extensions;
+        this.serverProperties = new ServerPropertiesStore(bridge.serverDirectory());
     }
 
     void start() throws IOException {
@@ -73,6 +75,7 @@ final class EmbeddedDashboardServer {
         server.createContext("/api/v1/health", this::health);
         server.createContext("/api/v1/server", this::serverInfo);
         server.createContext("/api/v1/settings", this::settings);
+        server.createContext("/api/v1/server-properties", this::serverProperties);
         server.createContext("/api/v1/auth/rotate", this::rotateToken);
         server.createContext("/api/v1/console", this::console);
         server.createContext("/api/v1/players", this::players);
@@ -99,6 +102,87 @@ final class EmbeddedDashboardServer {
         if (!authorize(exchange)) return;
         if (!method(exchange, "GET")) return;
         write(exchange, 200, "application/json; charset=utf-8", Json.server(bridge.snapshot()));
+    }
+
+    private void serverProperties(HttpExchange exchange) throws IOException {
+        if (!authorize(exchange)) return;
+
+        if ("GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+            write(
+                exchange,
+                200,
+                "application/json; charset=utf-8",
+                Json.serverProperties(serverProperties.read())
+            );
+            return;
+        }
+
+        if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())
+            && !"PUT".equalsIgnoreCase(exchange.getRequestMethod())) {
+            exchange.getResponseHeaders().set("Allow", "GET, POST, PUT");
+            write(exchange, 405, "application/json; charset=utf-8", Json.error("method_not_allowed"));
+            return;
+        }
+
+        String body;
+        try {
+            body = readBody(exchange, MAX_BODY_BYTES);
+        } catch (BodyTooLargeException exception) {
+            write(exchange, 413, "application/json; charset=utf-8", Json.error("payload_too_large"));
+            return;
+        }
+
+        String motd = Json.readStringField(body, "motd");
+        Integer serverPort = Json.readIntField(body, "serverPort");
+        Integer maxPlayers = Json.readIntField(body, "maxPlayers");
+        Boolean onlineMode = Json.readBooleanField(body, "onlineMode");
+        Boolean whiteList = Json.readBooleanField(body, "whiteList");
+        String difficulty = Json.readStringField(body, "difficulty");
+        String gamemode = Json.readStringField(body, "gamemode");
+        Boolean hardcore = Json.readBooleanField(body, "hardcore");
+
+        if (motd == null || motd.length() > 512 || motd.indexOf('\n') >= 0 || motd.indexOf('\r') >= 0) {
+            write(exchange, 400, "application/json; charset=utf-8", Json.error("invalid_motd"));
+            return;
+        }
+
+        if (serverPort == null || serverPort.intValue() < 1 || serverPort.intValue() > 65535) {
+            write(exchange, 400, "application/json; charset=utf-8", Json.error("invalid_server_port"));
+            return;
+        }
+
+        if (maxPlayers == null || maxPlayers.intValue() < 1 || maxPlayers.intValue() > 100000) {
+            write(exchange, 400, "application/json; charset=utf-8", Json.error("invalid_max_players"));
+            return;
+        }
+
+        if (onlineMode == null || whiteList == null || hardcore == null) {
+            write(exchange, 400, "application/json; charset=utf-8", Json.error("invalid_boolean_setting"));
+            return;
+        }
+
+        if (!oneOf(difficulty, "peaceful", "easy", "normal", "hard")) {
+            write(exchange, 400, "application/json; charset=utf-8", Json.error("invalid_difficulty"));
+            return;
+        }
+
+        if (!oneOf(gamemode, "survival", "creative", "adventure", "spectator")) {
+            write(exchange, 400, "application/json; charset=utf-8", Json.error("invalid_gamemode"));
+            return;
+        }
+
+        serverProperties.write(new ServerPropertiesSettings(
+            motd,
+            serverPort.intValue(),
+            maxPlayers.intValue(),
+            onlineMode.booleanValue(),
+            whiteList.booleanValue(),
+            difficulty,
+            gamemode,
+            hardcore.booleanValue()
+        ));
+
+        write(exchange, 200, "application/json; charset=utf-8", Json.serverPropertiesUpdated());
     }
 
     private void settings(HttpExchange exchange) throws IOException {
@@ -340,6 +424,14 @@ final class EmbeddedDashboardServer {
         } catch (ExecutionException exception) {
             write(exchange, 500, "application/json; charset=utf-8", Json.error("kick_failed"));
         }
+    }
+
+    private static boolean oneOf(String value, String... allowed) {
+        if (value == null) return false;
+        for (String candidate : allowed) {
+            if (candidate.equals(value)) return true;
+        }
+        return false;
     }
 
     private boolean authorize(HttpExchange exchange) throws IOException {
