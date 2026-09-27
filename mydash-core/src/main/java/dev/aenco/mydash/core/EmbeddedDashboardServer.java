@@ -12,6 +12,8 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import dev.aenco.mydash.api.DashboardAsset;
+import dev.aenco.mydash.api.DashboardAssetProvider;
 import dev.aenco.mydash.api.DashboardExtension;\n\nimport java.util.Collection;\nimport java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -61,6 +63,7 @@ final class EmbeddedDashboardServer {
         server.createContext("/api/v1/console", this::console);
         server.createContext("/api/v1/players", this::players);
         server.createContext("/api/v1/extensions", this::extensions);
+        server.createContext("/extensions/", this::extensionAsset);
         server.createContext("/", new StaticHandler());
 
         server.start();
@@ -88,6 +91,69 @@ final class EmbeddedDashboardServer {
         if (!authorize(exchange)) return;
         if (!method(exchange, "GET")) return;
         write(exchange, 200, "application/json; charset=utf-8", Json.extensions(extensions.get()));
+    }
+
+    private void extensionAsset(HttpExchange exchange) throws IOException {
+        if (!method(exchange, "GET")) return;
+
+        String path = exchange.getRequestURI().getPath();
+        String prefix = "/extensions/";
+        String remaining = path.substring(prefix.length());
+
+        int separator = remaining.indexOf('/');
+        if (separator <= 0) {
+            write(exchange, 404, "application/json; charset=utf-8", Json.error("extension_not_found"));
+            return;
+        }
+
+        String extensionId = remaining.substring(0, separator);
+        String relativePath = remaining.substring(separator + 1);
+        if (relativePath.isEmpty()) relativePath = "index.html";
+
+        if (relativePath.contains("..") || relativePath.indexOf('\\') >= 0) {
+            write(exchange, 400, "application/json; charset=utf-8", Json.error("invalid_asset_path"));
+            return;
+        }
+
+        DashboardExtension matched = null;
+        for (DashboardExtension extension : extensions.get()) {
+            if (extension.id().equals(extensionId)) {
+                matched = extension;
+                break;
+            }
+        }
+
+        if (matched == null) {
+            write(exchange, 404, "application/json; charset=utf-8", Json.error("extension_not_found"));
+            return;
+        }
+
+        DashboardAssetProvider provider = matched.assetProvider();
+        if (provider == null) {
+            write(exchange, 404, "application/json; charset=utf-8", Json.error("extension_has_no_assets"));
+            return;
+        }
+
+        DashboardAsset asset;
+        try {
+            asset = provider.open(relativePath);
+        } catch (IOException exception) {
+            write(exchange, 500, "application/json; charset=utf-8", Json.error("extension_asset_failed"));
+            return;
+        }
+
+        if (asset == null) {
+            write(exchange, 404, "application/json; charset=utf-8", Json.error("asset_not_found"));
+            return;
+        }
+
+        byte[] data = asset.content();
+        if (data.length > 8 * 1024 * 1024) {
+            write(exchange, 413, "application/json; charset=utf-8", Json.error("asset_too_large"));
+            return;
+        }
+
+        writeBytes(exchange, 200, asset.contentType(), data);
     }
 
     private void console(HttpExchange exchange) throws IOException {
@@ -235,6 +301,16 @@ final class EmbeddedDashboardServer {
             return Integer.parseInt(value);
         } catch (NumberFormatException ignored) {
             return -1;
+        }
+    }
+
+    private static void writeBytes(HttpExchange exchange, int status, String contentType, byte[] bytes) throws IOException {
+        applySecurityHeaders(exchange.getResponseHeaders());
+        exchange.getResponseHeaders().set("Content-Type", contentType);
+        exchange.sendResponseHeaders(status, bytes.length);
+
+        try (OutputStream output = exchange.getResponseBody()) {
+            output.write(bytes);
         }
     }
 
