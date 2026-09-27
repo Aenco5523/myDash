@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "mydash",
+  "version": "${version}",
+  "name": "myDash",
+  "description": "Self-hosted Minecraft server management dashboard and extensible API.",
+  "authors": ["Aenco5523"],
+  "contact": {"sources": "https://github.com/Aenco5523/myDash"},
+  "license": "All Rights Reserved",
+  "environment": "server",
+  "entrypoints": {
+    "main": ["dev.aenco.mydash.platform.fabric1182.MyDashFabric1182"]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.5",
+    "minecraft": "1.18.2",
+    "java": ">=17",
+    "fabric-api": "*"
+  }
+}
