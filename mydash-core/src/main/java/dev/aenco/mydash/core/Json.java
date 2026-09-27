@@ -89,6 +89,27 @@ final class Json {
         return json.append(']').toString();
     }
 
+    static String files(String path, List<FileEntrySnapshot> entries) {
+        StringBuilder json = new StringBuilder("{");
+        json.append("\"path\":\"").append(escape(path)).append("\",");
+        json.append("\"entries\":[");
+
+        for (int i = 0; i < entries.size(); i++) {
+            if (i > 0) json.append(',');
+            FileEntrySnapshot entry = entries.get(i);
+            json.append('{')
+                .append("\"path\":\"").append(escape(entry.path())).append("\",")
+                .append("\"name\":\"").append(escape(entry.name())).append("\",")
+                .append("\"directory\":").append(entry.directory()).append(',')
+                .append("\"symlink\":").append(entry.symlink()).append(',')
+                .append("\"editable\":").append(entry.editable()).append(',')
+                .append("\"size\":").append(entry.size())
+                .append('}');
+        }
+
+        return json.append("]}").toString();
+    }
+
     static String consoleLine(ConsoleLine line) {
         return "{"
             + "\"id\":" + line.id() + ","
