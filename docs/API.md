@@ -88,3 +88,36 @@ server.allowRemote=true
 ```
 
 For internet-facing deployments, put myDash behind HTTPS/reverse-proxy access controls rather than exposing the embedded HTTP server directly.
+
+
+### GET /api/v1/players
+
+Returns the players currently connected to the Minecraft server.
+
+Example:
+
+```json
+[
+  {
+    "uuid": "00000000-0000-0000-0000-000000000000",
+    "name": "ExamplePlayer",
+    "operator": false
+  }
+]
+```
+
+The platform adapter gathers the list on the Minecraft server thread.
+
+### POST /api/v1/players/{uuid}/kick
+
+Disconnects one currently connected player.
+
+Request:
+
+```json
+{
+  "reason": "Kicked by myDash"
+}
+```
+
+The reason is optional and limited to 256 characters. The kick is executed on the Minecraft server thread.
