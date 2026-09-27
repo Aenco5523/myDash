@@ -138,9 +138,57 @@ jobs:
       - name: Build ${{ matrix.name }}
         run: gradle -p ${{ matrix.path }} build --build-cache --stacktrace
 
+  calver:
+    name: ${{ matrix.name }}
+    runs-on: [self-hosted, Windows, X64]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: "Forge 26.1", path: "calver/forge", mc: "26.1" }
+          - { name: "Forge 26.2", path: "calver/forge", mc: "26.2" }
+          - { name: "Forge 26.3", path: "calver/forge", mc: "26.3" }
+          - { name: "NeoForge 26.1", path: "calver/neoforge", mc: "26.1" }
+          - { name: "NeoForge 26.2", path: "calver/neoforge", mc: "26.2" }
+          - { name: "NeoForge 26.3", path: "calver/neoforge", mc: "26.3" }
+          - { name: "Fabric 26.1", path: "calver/fabric", mc: "26.1" }
+          - { name: "Fabric 26.2", path: "calver/fabric", mc: "26.2" }
+          - { name: "Fabric 26.3", path: "calver/fabric", mc: "26.3" }
+          - { name: "Paper 26.1", path: "calver/paper", mc: "26.1" }
+          - { name: "Paper 26.2", path: "calver/paper", mc: "26.2" }
+          - { name: "Paper 26.3", path: "calver/paper", mc: "26.3" }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Repair corrupted Maven toolchain metadata
+        shell: powershell
+        run: |
+          $toolchains = Join-Path $HOME ".m2\toolchains.xml"
+          if (Test-Path $toolchains) {
+            $bytes = [System.IO.File]::ReadAllBytes($toolchains)
+            if ($bytes -contains 0) { Remove-Item $toolchains -Force }
+          }
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Set up Gradle 9.6.0
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "9.6.0"
+          cache-disabled: true
+          validate-wrappers: false
+
+      - name: Build ${{ matrix.name }}
+        run: gradle -p ${{ matrix.path }} build -PmcVersion=${{ matrix.mc }} --build-cache --stacktrace
+
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [modern, standalone]
+    needs: [modern, standalone, calver]
     runs-on: [self-hosted, Windows, X64]
 
     steps:
@@ -172,6 +220,46 @@ jobs:
 
       - name: Build modern JARs
         run: gradle buildSupported --build-cache --parallel --stacktrace
+
+      - name: Switch to Java 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Set up Gradle 9.6.0 for 26.x
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "9.6.0"
+          cache-disabled: true
+          validate-wrappers: false
+
+      - name: Build CalVer 26.x JARs
+        shell: powershell
+        run: |
+          $targets = @(
+            @("calver/forge","26.1"), @("calver/forge","26.2"), @("calver/forge","26.3"),
+            @("calver/neoforge","26.1"), @("calver/neoforge","26.2"), @("calver/neoforge","26.3"),
+            @("calver/fabric","26.1"), @("calver/fabric","26.2"), @("calver/fabric","26.3"),
+            @("calver/paper","26.1"), @("calver/paper","26.2"), @("calver/paper","26.3")
+          )
+          foreach ($target in $targets) {
+            gradle -p $target[0] build "-PmcVersion=$($target[1])" --build-cache --stacktrace
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+      - name: Switch back to Java 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Restore Gradle 8.8
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "8.8"
+          cache-disabled: true
+          validate-wrappers: false
 
       - name: Build Fabric standalone JARs
         shell: powershell
@@ -249,6 +337,19 @@ jobs:
             platforms/neoforge-1.21.1/build/libs/myDash-neoforge-1.21.1-v2.1.jar
             platforms/fabric-1.21.1/build/libs/myDash-fabric-1.21.1-v2.1.jar
             platforms/paper-1.21.1/build/libs/myDash-paper-1.21.1-v2.1.jar
+
+            calver/forge/build/libs/myDash-forge-26.1-v2.1.jar
+            calver/forge/build/libs/myDash-forge-26.2-v2.1.jar
+            calver/forge/build/libs/myDash-forge-26.3-v2.1.jar
+            calver/neoforge/build/libs/myDash-neoforge-26.1-v2.1.jar
+            calver/neoforge/build/libs/myDash-neoforge-26.2-v2.1.jar
+            calver/neoforge/build/libs/myDash-neoforge-26.3-v2.1.jar
+            calver/fabric/build/libs/myDash-fabric-26.1-v2.1.jar
+            calver/fabric/build/libs/myDash-fabric-26.2-v2.1.jar
+            calver/fabric/build/libs/myDash-fabric-26.3-v2.1.jar
+            calver/paper/build/libs/myDash-paper-26.1-v2.1.jar
+            calver/paper/build/libs/myDash-paper-26.2-v2.1.jar
+            calver/paper/build/libs/myDash-paper-26.3-v2.1.jar
 
             legacy/forge-1.16.5/build/libs/myDash-forge-1.16.5-v2.1.jar
             legacy/fabric-1.16.5/build/libs/myDash-fabric-1.16.5-v2.1.jar

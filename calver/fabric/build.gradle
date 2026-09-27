@@ -1,0 +1,40 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version '1.17'
+}
+group = 'dev.aenco.mydash'
+version = 'v2.1'
+def mcVersion = providers.gradleProperty('mcVersion').orElse('26.3').get()
+def loaderVersions = ['26.1':'0.18.4','26.2':'0.19.3','26.3':'0.19.5']
+def apiVersions = ['26.1':'0.145.1+26.1','26.2':'0.161.0+26.2','26.3':'0.161.0+26.3']
+if (!loaderVersions.containsKey(mcVersion)) throw new GradleException("Unsupported Fabric version: " + mcVersion)
+base { archivesName = "myDash-fabric-${mcVersion}" }
+repositories {
+    mavenCentral()
+    maven { url = 'https://maven.fabricmc.net/' }
+}
+dependencies {
+    minecraft "com.mojang:minecraft:${mcVersion}"
+    implementation "net.fabricmc:fabric-loader:${loaderVersions[mcVersion]}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${apiVersions[mcVersion]}"
+}
+sourceSets {
+    main {
+        java {
+            srcDir '../../mydash-api/src/main/java'
+            srcDir '../../mydash-core/src/main/java'
+        }
+        resources { srcDir '../../mydash-core/src/main/resources' }
+    }
+}
+loom { mods { mydash { sourceSet sourceSets.main } } }
+processResources {
+    inputs.property 'version', '2.1'
+    inputs.property 'minecraft_version', mcVersion
+    filesMatching('fabric.mod.json') { expand version:'2.1', minecraft_version:mcVersion }
+}
+tasks.withType(JavaCompile).configureEach { options.release = 25 }
+java {
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
+tasks.named('jar', Jar) { archiveFileName = "myDash-fabric-${mcVersion}-v2.1.jar" }

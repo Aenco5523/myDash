@@ -7,6 +7,10 @@ Self-hosted Minecraft server management dashboard with a shared API and multi-lo
 - NeoForge 1.21.1
 - Fabric 1.21.1
 - Paper 1.21.1
+- Forge 26.1 / 26.2 / 26.3
+- NeoForge 26.1 / 26.2 / 26.3
+- Fabric 26.1 / 26.2 / 26.3
+- Paper 26.1 / 26.2 / 26.3
 - Forge / Paper and additional Minecraft versions are planned on the same adapter architecture.
 
 ## Current features
@@ -87,6 +91,10 @@ Examples:
 ```text
 myDash-neoforge-1.21.1-v2.1.jar
 myDash-fabric-1.21.1-v2.1.jar
+myDash-forge-26.1-v2.1.jar
+myDash-neoforge-26.2-v2.1.jar
+myDash-fabric-26.3-v2.1.jar
+myDash-paper-26.3-v2.1.jar
 ```
 
 ## Build runner

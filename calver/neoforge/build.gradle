@@ -1,0 +1,31 @@
+plugins {
+    id 'net.neoforged.moddev' version '2.0.147'
+}
+group = 'dev.aenco.mydash'
+version = 'v2.1'
+def mcVersion = providers.gradleProperty('mcVersion').orElse('26.3').get()
+def neoVersions = ['26.1':'26.1.0.19-beta','26.2':'26.2.0.88','26.3':'26.3.0.16-beta']
+def mcRanges = ['26.1':'[26.1,26.2)','26.2':'[26.2,26.3)','26.3':'[26.3,26.4)']
+if (!neoVersions.containsKey(mcVersion)) throw new GradleException("Unsupported NeoForge version: " + mcVersion)
+base { archivesName = "myDash-neoforge-${mcVersion}" }
+java { toolchain { languageVersion = JavaLanguageVersion.of(25) } }
+sourceSets {
+    main {
+        java {
+            srcDir '../../mydash-api/src/main/java'
+            srcDir '../../mydash-core/src/main/java'
+        }
+        resources { srcDir '../../mydash-core/src/main/resources' }
+    }
+}
+neoForge {
+    version = neoVersions[mcVersion]
+    validateAccessTransformers = true
+    mods { mydash { sourceSet sourceSets.main } }
+}
+processResources {
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand mod_version:'2.1', minecraft_version_range:mcRanges[mcVersion], neo_version:neoVersions[mcVersion]
+    }
+}
+tasks.named('jar', Jar) { archiveFileName = "myDash-neoforge-${mcVersion}-v2.1.jar" }
