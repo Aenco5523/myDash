@@ -12,30 +12,37 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 final class EmbeddedDashboardServer {
-    private static final String DEFAULT_HOST = "127.0.0.1";
-    private static final int DEFAULT_PORT = 8765;
+    private static final int MAX_BODY_BYTES = 16 * 1024;
 
     private final ServerBridge bridge;
+    private final MyDashConfig config;
+    private final MyDashSecurity security;
+
     private HttpServer server;
     private ExecutorService executor;
 
-    EmbeddedDashboardServer(ServerBridge bridge) {
+    EmbeddedDashboardServer(ServerBridge bridge, MyDashConfig config, MyDashSecurity security) {
         this.bridge = bridge;
+        this.config = config;
+        this.security = security;
     }
 
     void start() throws IOException {
-        String host = System.getProperty("mydash.host", DEFAULT_HOST);
-        int port = Integer.getInteger("mydash.port", DEFAULT_PORT);
+        String host = config.bindAddress();
+        int port = config.port();
 
         InetAddress address = InetAddress.getByName(host);
-        if (!address.isLoopbackAddress()) {
+        if (!address.isLoopbackAddress() && !config.allowRemote()) {
             throw new IllegalStateException(
-                "Remote binding is disabled until myDash authentication is enabled. "
-                    + "Use 127.0.0.1 and place an authenticated reverse proxy in front of myDash."
+                "Remote binding is disabled. Set server.allowRemote=true only after securing access "
+                    + "with HTTPS or a trusted reverse proxy."
             );
         }
 
@@ -47,8 +54,9 @@ final class EmbeddedDashboardServer {
         });
         server.setExecutor(executor);
 
-        server.createContext("/api/v1/health", exchange -> json(exchange, 200, "{\"ok\":true,\"apiVersion\":\"1\"}"));
-        server.createContext("/api/v1/server", exchange -> json(exchange, 200, Json.server(bridge.snapshot())));
+        server.createContext("/api/v1/health", this::health);
+        server.createContext("/api/v1/server", this::serverInfo);
+        server.createContext("/api/v1/console", this::console);
         server.createContext("/", new StaticHandler());
 
         server.start();
@@ -60,27 +68,116 @@ final class EmbeddedDashboardServer {
         if (executor != null) executor.shutdownNow();
     }
 
-    private static void json(HttpExchange exchange, int status, String body) throws IOException {
-        if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
-            write(exchange, 405, "application/json; charset=utf-8", "{\"error\":\"method_not_allowed\"}");
+    private void health(HttpExchange exchange) throws IOException {
+        if (!method(exchange, "GET")) return;
+        write(exchange, 200, "application/json; charset=utf-8",
+            "{\"ok\":true,\"apiVersion\":\"1\",\"authentication\":\"bearer\"}");
+    }
+
+    private void serverInfo(HttpExchange exchange) throws IOException {
+        if (!authorize(exchange)) return;
+        if (!method(exchange, "GET")) return;
+        write(exchange, 200, "application/json; charset=utf-8", Json.server(bridge.snapshot()));
+    }
+
+    private void console(HttpExchange exchange) throws IOException {
+        if (!authorize(exchange)) return;
+        if (!method(exchange, "POST")) return;
+
+        String body;
+        try {
+            body = readBody(exchange, MAX_BODY_BYTES);
+        } catch (BodyTooLargeException exception) {
+            write(exchange, 413, "application/json; charset=utf-8", Json.error("payload_too_large"));
             return;
         }
-        write(exchange, status, "application/json; charset=utf-8", body);
+
+        String command = Json.readCommand(body);
+        if (command == null) {
+            write(exchange, 400, "application/json; charset=utf-8", Json.error("invalid_command"));
+            return;
+        }
+
+        try {
+            bridge.executeCommand(command).get(5, TimeUnit.SECONDS);
+            write(exchange, 202, "application/json; charset=utf-8", Json.commandAccepted(command));
+        } catch (TimeoutException exception) {
+            write(exchange, 504, "application/json; charset=utf-8", Json.error("command_timeout"));
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            write(exchange, 503, "application/json; charset=utf-8", Json.error("interrupted"));
+        } catch (ExecutionException exception) {
+            write(exchange, 500, "application/json; charset=utf-8", Json.error("command_failed"));
+        }
+    }
+
+    private boolean authorize(HttpExchange exchange) throws IOException {
+        String authorization = exchange.getRequestHeaders().getFirst("Authorization");
+        if (security.authorize(authorization)) return true;
+
+        exchange.getResponseHeaders().set("WWW-Authenticate", "Bearer realm=\"myDash\"");
+        write(exchange, 401, "application/json; charset=utf-8", Json.error("unauthorized"));
+        return false;
+    }
+
+    private boolean method(HttpExchange exchange, String method) throws IOException {
+        if (method.equalsIgnoreCase(exchange.getRequestMethod())) return true;
+
+        exchange.getResponseHeaders().set("Allow", method);
+        write(exchange, 405, "application/json; charset=utf-8", Json.error("method_not_allowed"));
+        return false;
+    }
+
+    private static String readBody(HttpExchange exchange, int maxBytes) throws IOException, BodyTooLargeException {
+        int contentLength = parseContentLength(exchange.getRequestHeaders().getFirst("Content-Length"));
+        if (contentLength > maxBytes) throw new BodyTooLargeException();
+
+        try (InputStream input = exchange.getRequestBody(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[2048];
+            int total = 0;
+            int read;
+
+            while ((read = input.read(buffer)) != -1) {
+                total += read;
+                if (total > maxBytes) throw new BodyTooLargeException();
+                output.write(buffer, 0, read);
+            }
+
+            return new String(output.toByteArray(), StandardCharsets.UTF_8);
+        }
+    }
+
+    private static int parseContentLength(String value) {
+        if (value == null) return -1;
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException ignored) {
+            return -1;
+        }
     }
 
     private static void write(HttpExchange exchange, int status, String contentType, String body) throws IOException {
         byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
-        Headers headers = exchange.getResponseHeaders();
-        headers.set("Content-Type", contentType);
+        applySecurityHeaders(exchange.getResponseHeaders());
+        exchange.getResponseHeaders().set("Content-Type", contentType);
+        exchange.sendResponseHeaders(status, bytes.length);
+
+        try (OutputStream output = exchange.getResponseBody()) {
+            output.write(bytes);
+        }
+    }
+
+    private static void applySecurityHeaders(Headers headers) {
         headers.set("Cache-Control", "no-store");
         headers.set("X-Content-Type-Options", "nosniff");
         headers.set("X-Frame-Options", "DENY");
         headers.set("Referrer-Policy", "no-referrer");
-        headers.set("Content-Security-Policy", "default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'");
-        exchange.sendResponseHeaders(status, bytes.length);
-        try (OutputStream output = exchange.getResponseBody()) {
-            output.write(bytes);
-        }
+        headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+        headers.set(
+            "Content-Security-Policy",
+            "default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; "
+                + "object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+        );
     }
 
     private static final class StaticHandler implements HttpHandler {
@@ -93,6 +190,11 @@ final class EmbeddedDashboardServer {
 
             String path = exchange.getRequestURI().getPath();
             if ("/".equals(path)) path = "/index.html";
+
+            if (path.contains("..") || path.indexOf('\\') >= 0) {
+                write(exchange, 400, "text/plain; charset=utf-8", "Bad Request");
+                return;
+            }
 
             String resource = "/mydash-web" + path;
             InputStream input = EmbeddedDashboardServer.class.getResourceAsStream(resource);
@@ -110,12 +212,10 @@ final class EmbeddedDashboardServer {
             }
 
             Headers headers = exchange.getResponseHeaders();
+            applySecurityHeaders(headers);
             headers.set("Content-Type", contentType(path));
-            headers.set("X-Content-Type-Options", "nosniff");
-            headers.set("X-Frame-Options", "DENY");
-            headers.set("Referrer-Policy", "no-referrer");
-            headers.set("Content-Security-Policy", "default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'");
             exchange.sendResponseHeaders(200, data.length);
+
             try (OutputStream output = exchange.getResponseBody()) {
                 output.write(data);
             }
@@ -128,5 +228,9 @@ final class EmbeddedDashboardServer {
             if (path.endsWith(".png")) return "image/png";
             return "text/html; charset=utf-8";
         }
+    }
+
+    private static final class BodyTooLargeException extends Exception {
+        private static final long serialVersionUID = 1L;
     }
 }
