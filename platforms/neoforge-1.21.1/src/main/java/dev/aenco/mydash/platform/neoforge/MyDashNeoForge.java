@@ -15,6 +15,7 @@ import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
@@ -50,6 +51,11 @@ public final class MyDashNeoForge {
                     server.getMaxPlayers(),
                     System.currentTimeMillis() - startedAt
                 );
+            }
+
+            @Override
+            public Path serverDirectory() {
+                return Paths.get(".").toAbsolutePath().normalize();
             }
 
             @Override
