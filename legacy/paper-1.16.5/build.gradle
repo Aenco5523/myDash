@@ -1,0 +1,48 @@
+plugins {
+    id 'java'
+}
+
+group = 'dev.aenco.mydash'
+version = 'v2.1'
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://repo.papermc.io/repository/maven-public/' }
+}
+
+dependencies {
+    compileOnly 'io.papermc.paper:paper-api:1.16.5-R0.1-SNAPSHOT'
+    compileOnly 'org.apache.logging.log4j:log4j-core:2.17.1'
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir '../../mydash-api/src/main/java'
+            srcDir '../../mydash-core/src/main/java'
+        }
+        resources {
+            srcDir '../../mydash-core/src/main/resources'
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 8
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+processResources {
+    inputs.property 'version', '2.1'
+    filesMatching('plugin.yml') {
+        expand version: '2.1'
+    }
+}
+
+jar {
+    archiveFileName = 'myDash-paper-1.16.5-v2.1.jar'
+}
