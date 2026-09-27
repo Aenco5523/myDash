@@ -78,5 +78,5 @@ jobs:
         with:
           generate_release_notes: true
           files: |
-            platforms/neoforge-1.21.1/build/libs/myDash-neoforge-1.21.1-v2.1.0.jar
-            platforms/fabric-1.21.1/build/libs/myDash-fabric-1.21.1-v2.1.0.jar
+            platforms/neoforge-1.21.1/build/libs/myDash-neoforge-1.21.1-v2.1.jar
+            platforms/fabric-1.21.1/build/libs/myDash-fabric-1.21.1-v2.1.jar
