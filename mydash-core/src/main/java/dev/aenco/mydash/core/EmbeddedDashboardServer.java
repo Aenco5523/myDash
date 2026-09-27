@@ -4,6 +4,9 @@ import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
+import dev.aenco.mydash.api.DashboardAsset;
+import dev.aenco.mydash.api.DashboardAssetProvider;
+import dev.aenco.mydash.api.DashboardExtension;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -11,31 +14,40 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
-import dev.aenco.mydash.api.DashboardAsset;
-import dev.aenco.mydash.api.DashboardAssetProvider;
-import dev.aenco.mydash.api.DashboardExtension;\n\nimport java.util.Collection;\nimport java.util.List;
+import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;\nimport java.util.function.Supplier;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 
 final class EmbeddedDashboardServer {
     private static final int MAX_BODY_BYTES = 16 * 1024;
+    private static final int MAX_EXTENSION_ASSET_BYTES = 8 * 1024 * 1024;
 
     private final ServerBridge bridge;
     private final MyDashConfig config;
-    private final MyDashSecurity security;\n    private final Supplier<Collection<DashboardExtension>> extensions;
+    private final MyDashSecurity security;
+    private final Supplier<Collection<DashboardExtension>> extensions;
 
     private HttpServer server;
     private ExecutorService executor;
 
-    EmbeddedDashboardServer(ServerBridge bridge, MyDashConfig config, MyDashSecurity security) {
+    EmbeddedDashboardServer(
+        ServerBridge bridge,
+        MyDashConfig config,
+        MyDashSecurity security,
+        Supplier<Collection<DashboardExtension>> extensions
+    ) {
         this.bridge = bridge;
         this.config = config;
         this.security = security;
+        this.extensions = extensions;
     }
 
     void start() throws IOException {
@@ -60,6 +72,8 @@ final class EmbeddedDashboardServer {
 
         server.createContext("/api/v1/health", this::health);
         server.createContext("/api/v1/server", this::serverInfo);
+        server.createContext("/api/v1/settings", this::settings);
+        server.createContext("/api/v1/auth/rotate", this::rotateToken);
         server.createContext("/api/v1/console", this::console);
         server.createContext("/api/v1/players", this::players);
         server.createContext("/api/v1/extensions", this::extensions);
@@ -87,6 +101,74 @@ final class EmbeddedDashboardServer {
         write(exchange, 200, "application/json; charset=utf-8", Json.server(bridge.snapshot()));
     }
 
+    private void settings(HttpExchange exchange) throws IOException {
+        if (!authorize(exchange)) return;
+
+        if ("GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+            write(exchange, 200, "application/json; charset=utf-8", Json.settings(config));
+            return;
+        }
+
+        if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())
+            && !"PUT".equalsIgnoreCase(exchange.getRequestMethod())) {
+            exchange.getResponseHeaders().set("Allow", "GET, POST, PUT");
+            write(exchange, 405, "application/json; charset=utf-8", Json.error("method_not_allowed"));
+            return;
+        }
+
+        String body;
+        try {
+            body = readBody(exchange, MAX_BODY_BYTES);
+        } catch (BodyTooLargeException exception) {
+            write(exchange, 413, "application/json; charset=utf-8", Json.error("payload_too_large"));
+            return;
+        }
+
+        String bindAddress = Json.readStringField(body, "bindAddress");
+        Integer port = Json.readIntField(body, "port");
+        Boolean allowRemote = Json.readBooleanField(body, "allowRemote");
+
+        if (bindAddress == null || bindAddress.trim().isEmpty() || bindAddress.length() > 255) {
+            write(exchange, 400, "application/json; charset=utf-8", Json.error("invalid_bind_address"));
+            return;
+        }
+
+        if (port == null || port.intValue() < 1 || port.intValue() > 65535) {
+            write(exchange, 400, "application/json; charset=utf-8", Json.error("invalid_port"));
+            return;
+        }
+
+        if (allowRemote == null) {
+            write(exchange, 400, "application/json; charset=utf-8", Json.error("invalid_allow_remote"));
+            return;
+        }
+
+        InetAddress address;
+        try {
+            address = InetAddress.getByName(bindAddress.trim());
+        } catch (UnknownHostException exception) {
+            write(exchange, 400, "application/json; charset=utf-8", Json.error("invalid_bind_address"));
+            return;
+        }
+
+        if (!address.isLoopbackAddress() && !allowRemote.booleanValue()) {
+            write(exchange, 400, "application/json; charset=utf-8",
+                Json.error("remote_binding_requires_allow_remote"));
+            return;
+        }
+
+        config.updateServer(bindAddress.trim(), port.intValue(), allowRemote.booleanValue());
+        write(exchange, 200, "application/json; charset=utf-8", Json.settingsUpdated());
+    }
+
+    private void rotateToken(HttpExchange exchange) throws IOException {
+        if (!authorize(exchange)) return;
+        if (!method(exchange, "POST")) return;
+
+        String newToken = security.rotate(config);
+        write(exchange, 200, "application/json; charset=utf-8", Json.tokenRotated(newToken));
+    }
+
     private void extensions(HttpExchange exchange) throws IOException {
         if (!authorize(exchange)) return;
         if (!method(exchange, "GET")) return;
@@ -96,9 +178,9 @@ final class EmbeddedDashboardServer {
     private void extensionAsset(HttpExchange exchange) throws IOException {
         if (!method(exchange, "GET")) return;
 
-        String path = exchange.getRequestURI().getPath();
+        String requestPath = exchange.getRequestURI().getPath();
         String prefix = "/extensions/";
-        String remaining = path.substring(prefix.length());
+        String remaining = requestPath.substring(prefix.length());
 
         int separator = remaining.indexOf('/');
         if (separator <= 0) {
@@ -148,12 +230,12 @@ final class EmbeddedDashboardServer {
         }
 
         byte[] data = asset.content();
-        if (data.length > 8 * 1024 * 1024) {
+        if (data.length > MAX_EXTENSION_ASSET_BYTES) {
             write(exchange, 413, "application/json; charset=utf-8", Json.error("asset_too_large"));
             return;
         }
 
-        writeBytes(exchange, 200, asset.contentType(), data);
+        writeExtensionBytes(exchange, 200, asset.contentType(), data);
     }
 
     private void console(HttpExchange exchange) throws IOException {
@@ -190,8 +272,8 @@ final class EmbeddedDashboardServer {
     private void players(HttpExchange exchange) throws IOException {
         if (!authorize(exchange)) return;
 
-        String path = exchange.getRequestURI().getPath();
-        if ("/api/v1/players".equals(path) || "/api/v1/players/".equals(path)) {
+        String requestPath = exchange.getRequestURI().getPath();
+        if ("/api/v1/players".equals(requestPath) || "/api/v1/players/".equals(requestPath)) {
             if (!method(exchange, "GET")) return;
 
             try {
@@ -210,14 +292,14 @@ final class EmbeddedDashboardServer {
 
         String prefix = "/api/v1/players/";
         String suffix = "/kick";
-        if (!path.startsWith(prefix) || !path.endsWith(suffix)) {
+        if (!requestPath.startsWith(prefix) || !requestPath.endsWith(suffix)) {
             write(exchange, 404, "application/json; charset=utf-8", Json.error("not_found"));
             return;
         }
 
         if (!method(exchange, "POST")) return;
 
-        String uuidPart = path.substring(prefix.length(), path.length() - suffix.length());
+        String uuidPart = requestPath.substring(prefix.length(), requestPath.length() - suffix.length());
         if (uuidPart.endsWith("/")) uuidPart = uuidPart.substring(0, uuidPart.length() - 1);
 
         UUID uuid;
@@ -248,6 +330,7 @@ final class EmbeddedDashboardServer {
                 write(exchange, 404, "application/json; charset=utf-8", Json.error("player_not_found"));
                 return;
             }
+
             write(exchange, 202, "application/json; charset=utf-8", Json.actionAccepted("kick"));
         } catch (TimeoutException exception) {
             write(exchange, 504, "application/json; charset=utf-8", Json.error("kick_timeout"));
@@ -297,6 +380,7 @@ final class EmbeddedDashboardServer {
 
     private static int parseContentLength(String value) {
         if (value == null) return -1;
+
         try {
             return Integer.parseInt(value);
         } catch (NumberFormatException ignored) {
@@ -304,8 +388,13 @@ final class EmbeddedDashboardServer {
         }
     }
 
-    private static void writeBytes(HttpExchange exchange, int status, String contentType, byte[] bytes) throws IOException {
-        applySecurityHeaders(exchange.getResponseHeaders());
+    private static void writeExtensionBytes(
+        HttpExchange exchange,
+        int status,
+        String contentType,
+        byte[] bytes
+    ) throws IOException {
+        applyExtensionHeaders(exchange.getResponseHeaders());
         exchange.getResponseHeaders().set("Content-Type", contentType);
         exchange.sendResponseHeaders(status, bytes.length);
 
@@ -325,16 +414,30 @@ final class EmbeddedDashboardServer {
         }
     }
 
-    private static void applySecurityHeaders(Headers headers) {
+    private static void applyCommonHeaders(Headers headers) {
         headers.set("Cache-Control", "no-store");
         headers.set("X-Content-Type-Options", "nosniff");
-        headers.set("X-Frame-Options", "DENY");
         headers.set("Referrer-Policy", "no-referrer");
         headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+    }
+
+    private static void applySecurityHeaders(Headers headers) {
+        applyCommonHeaders(headers);
+        headers.set("X-Frame-Options", "DENY");
         headers.set(
             "Content-Security-Policy",
             "default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; "
                 + "object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+        );
+    }
+
+    private static void applyExtensionHeaders(Headers headers) {
+        applyCommonHeaders(headers);
+        headers.set("X-Frame-Options", "SAMEORIGIN");
+        headers.set(
+            "Content-Security-Policy",
+            "default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; "
+                + "object-src 'none'; base-uri 'none'; frame-ancestors 'self'; form-action 'self'"
         );
     }
 
@@ -346,15 +449,15 @@ final class EmbeddedDashboardServer {
                 return;
             }
 
-            String path = exchange.getRequestURI().getPath();
-            if ("/".equals(path)) path = "/index.html";
+            String requestPath = exchange.getRequestURI().getPath();
+            if ("/".equals(requestPath)) requestPath = "/index.html";
 
-            if (path.contains("..") || path.indexOf('\\') >= 0) {
+            if (requestPath.contains("..") || requestPath.indexOf('\\') >= 0) {
                 write(exchange, 400, "text/plain; charset=utf-8", "Bad Request");
                 return;
             }
 
-            String resource = "/mydash-web" + path;
+            String resource = "/mydash-web" + requestPath;
             InputStream input = EmbeddedDashboardServer.class.getResourceAsStream(resource);
             if (input == null) {
                 write(exchange, 404, "text/plain; charset=utf-8", "Not Found");
@@ -371,7 +474,7 @@ final class EmbeddedDashboardServer {
 
             Headers headers = exchange.getResponseHeaders();
             applySecurityHeaders(headers);
-            headers.set("Content-Type", contentType(path));
+            headers.set("Content-Type", contentType(requestPath));
             exchange.sendResponseHeaders(200, data.length);
 
             try (OutputStream output = exchange.getResponseBody()) {
