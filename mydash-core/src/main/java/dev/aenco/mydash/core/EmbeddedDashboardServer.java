@@ -22,6 +22,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
@@ -29,12 +30,15 @@ import java.util.function.Supplier;
 final class EmbeddedDashboardServer {
     private static final int MAX_BODY_BYTES = 16 * 1024;
     private static final int MAX_EXTENSION_ASSET_BYTES = 8 * 1024 * 1024;
+    private static final int MAX_CONSOLE_STREAMS = 4;
 
     private final ServerBridge bridge;
     private final MyDashConfig config;
     private final MyDashSecurity security;
     private final Supplier<Collection<DashboardExtension>> extensions;
+    private final ConsoleBuffer consoleBuffer;
     private final ServerPropertiesStore serverProperties;
+    private final Semaphore consoleStreams = new Semaphore(MAX_CONSOLE_STREAMS);
 
     private HttpServer server;
     private ExecutorService executor;
@@ -43,12 +47,14 @@ final class EmbeddedDashboardServer {
         ServerBridge bridge,
         MyDashConfig config,
         MyDashSecurity security,
-        Supplier<Collection<DashboardExtension>> extensions
+        Supplier<Collection<DashboardExtension>> extensions,
+        ConsoleBuffer consoleBuffer
     ) {
         this.bridge = bridge;
         this.config = config;
         this.security = security;
         this.extensions = extensions;
+        this.consoleBuffer = consoleBuffer;
         this.serverProperties = new ServerPropertiesStore(bridge.serverDirectory());
     }
 
@@ -65,7 +71,7 @@ final class EmbeddedDashboardServer {
         }
 
         server = HttpServer.create(new InetSocketAddress(address, port), 0);
-        executor = Executors.newFixedThreadPool(4, runnable -> {
+        executor = Executors.newFixedThreadPool(8, runnable -> {
             Thread thread = new Thread(runnable, "myDash-http");
             thread.setDaemon(true);
             return thread;
@@ -77,6 +83,7 @@ final class EmbeddedDashboardServer {
         server.createContext("/api/v1/settings", this::settings);
         server.createContext("/api/v1/server-properties", this::serverProperties);
         server.createContext("/api/v1/auth/rotate", this::rotateToken);
+        server.createContext("/api/v1/console/stream", this::consoleStream);
         server.createContext("/api/v1/console", this::console);
         server.createContext("/api/v1/players", this::players);
         server.createContext("/api/v1/extensions", this::extensions);
@@ -88,7 +95,10 @@ final class EmbeddedDashboardServer {
     }
 
     void stop() {
-        if (server != null) server.stop(1);
+        HttpServer activeServer = server;
+        server = null;
+
+        if (activeServer != null) activeServer.stop(1);
         if (executor != null) executor.shutdownNow();
     }
 
@@ -320,6 +330,89 @@ final class EmbeddedDashboardServer {
         }
 
         writeExtensionBytes(exchange, 200, asset.contentType(), data);
+    }
+
+    private void consoleStream(HttpExchange exchange) throws IOException {
+        if (!authorize(exchange)) return;
+        if (!method(exchange, "GET")) return;
+
+        if (!consoleStreams.tryAcquire()) {
+            write(exchange, 429, "application/json; charset=utf-8", Json.error("too_many_console_streams"));
+            return;
+        }
+
+        try {
+            Headers headers = exchange.getResponseHeaders();
+            applyCommonHeaders(headers);
+            headers.set("Content-Type", "text/event-stream; charset=utf-8");
+            headers.set("X-Accel-Buffering", "no");
+            headers.set("Connection", "keep-alive");
+            exchange.sendResponseHeaders(200, 0);
+
+            try (OutputStream output = exchange.getResponseBody()) {
+                long cursor = parseAfterId(exchange.getRequestURI().getRawQuery());
+
+                if (cursor <= 0L) {
+                    List<ConsoleLine> recent = consoleBuffer.recent(200);
+                    for (ConsoleLine line : recent) {
+                        writeConsoleEvent(output, line);
+                        cursor = line.id();
+                    }
+                    output.flush();
+                }
+
+                while (server != null && !Thread.currentThread().isInterrupted()) {
+                    List<ConsoleLine> lines;
+
+                    try {
+                        lines = consoleBuffer.waitAfter(cursor, 100, 15000L);
+                    } catch (InterruptedException exception) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+
+                    if (lines.isEmpty()) {
+                        output.write(": keepalive\n\n".getBytes(StandardCharsets.UTF_8));
+                    } else {
+                        for (ConsoleLine line : lines) {
+                            writeConsoleEvent(output, line);
+                            cursor = line.id();
+                        }
+                    }
+
+                    output.flush();
+                }
+            } catch (IOException ignored) {
+                // Browser disconnected. The client reconnect loop resumes from the last event id.
+            }
+        } finally {
+            consoleStreams.release();
+        }
+    }
+
+    private static void writeConsoleEvent(OutputStream output, ConsoleLine line) throws IOException {
+        String event = "id: " + line.id() + "\n"
+            + "event: line\n"
+            + "data: " + Json.consoleLine(line) + "\n\n";
+        output.write(event.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static long parseAfterId(String rawQuery) {
+        if (rawQuery == null || rawQuery.isEmpty()) return 0L;
+
+        String[] parts = rawQuery.split("&");
+        for (String part : parts) {
+            if (!part.startsWith("after=")) continue;
+
+            try {
+                long value = Long.parseLong(part.substring("after=".length()));
+                return Math.max(0L, value);
+            } catch (NumberFormatException ignored) {
+                return 0L;
+            }
+        }
+
+        return 0L;
     }
 
     private void console(HttpExchange exchange) throws IOException {
