@@ -1,6 +1,7 @@
 package dev.aenco.mydash.core;
 
 import dev.aenco.mydash.api.DashboardExtension;
+import dev.aenco.mydash.api.MyDash;
 import dev.aenco.mydash.api.MyDashApi;
 
 import java.io.IOException;
@@ -36,14 +37,23 @@ public final class MyDashCore implements MyDashApi {
             System.out.println("[myDash] ============================================================");
         }
 
-        webServer = new EmbeddedDashboardServer(bridge, config, security);
-        webServer.start();
+        MyDash.bind(this);
+        try {
+            webServer = new EmbeddedDashboardServer(bridge, config, security, this::extensions);
+            webServer.start();
+        } catch (IOException | RuntimeException exception) {
+            webServer = null;
+            MyDash.unbind(this);
+            throw exception;
+        }
     }
 
     public synchronized void stop() {
-        if (webServer == null) return;
-        webServer.stop();
-        webServer = null;
+        if (webServer != null) {
+            webServer.stop();
+            webServer = null;
+        }
+        MyDash.unbind(this);
     }
 
     @Override
