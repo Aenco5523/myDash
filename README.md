@@ -15,10 +15,13 @@ Self-hosted Minecraft server management dashboard with a shared API and multi-lo
 - persistent Gradle cache on the self-hosted runner
 - server overview
 - authenticated command execution
+- live authenticated console streaming with reconnect/resume
 - online player list
 - player kick action
+- player OP/DEOP, ban and whitelist actions
 - web server settings
 - curated `server.properties` management
+- sandboxed file browser/editor with backups
 - first-run administrator token
 - administrator token rotation
 - versioned REST API under `/api/v1`
