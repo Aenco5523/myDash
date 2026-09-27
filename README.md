@@ -6,6 +6,7 @@ Self-hosted Minecraft server management dashboard with a shared API and multi-lo
 
 - NeoForge 1.21.1
 - Fabric 1.21.1
+- Paper 1.21.1
 - Forge / Paper and additional Minecraft versions are planned on the same adapter architecture.
 
 ## Current features
