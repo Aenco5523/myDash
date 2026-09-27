@@ -18,7 +18,66 @@ concurrency:
 # ~/.gradle is deliberately persistent and acts as the local dependency,
 # Minecraft mapping, Loom/ForgeGradle transform and Gradle build cache.
 jobs:
+  changes:
+    name: Detect build scope
+    runs-on: [self-hosted, Windows, X64]
+    outputs:
+      modern: ${{ steps.scope.outputs.modern }}
+      standalone: ${{ steps.scope.outputs.standalone }}
+      calver: ${{ steps.scope.outputs.calver }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed target groups
+        id: scope
+        shell: powershell
+        run: |
+          if ("${{ github.event_name }}" -ne "pull_request") {
+            "modern=true" >> $env:GITHUB_OUTPUT
+            "standalone=true" >> $env:GITHUB_OUTPUT
+            "calver=true" >> $env:GITHUB_OUTPUT
+            exit 0
+          }
+
+          $base = "${{ github.event.pull_request.base.sha }}"
+          $head = "${{ github.event.pull_request.head.sha }}"
+          $files = git diff --name-only $base $head
+
+          $modern = $false
+          $standalone = $false
+          $calver = $false
+
+          foreach ($file in $files) {
+            if ($file -match '^(mydash-api/|mydash-core/)') {
+              $modern = $true
+              $standalone = $true
+              $calver = $true
+              continue
+            }
+
+            if ($file -match '^(platforms/|build\.gradle$|settings\.gradle$|gradle\.properties$)') {
+              $modern = $true
+            }
+
+            if ($file -match '^legacy/') {
+              $standalone = $true
+            }
+
+            if ($file -match '^calver/') {
+              $calver = $true
+            }
+          }
+
+          "modern=$($modern.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          "standalone=$($standalone.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          "calver=$($calver.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+
   modern:
+    needs: changes
+    if: needs.changes.outputs.modern == 'true'
     name: ${{ matrix.name }}
     runs-on: [self-hosted, Windows, X64]
     strategy:
@@ -63,6 +122,8 @@ jobs:
         run: gradle ${{ matrix.task }} --build-cache --parallel --stacktrace
 
   standalone:
+    needs: changes
+    if: needs.changes.outputs.standalone == 'true'
     name: ${{ matrix.name }}
     runs-on: [self-hosted, Windows, X64]
     strategy:
@@ -139,6 +200,8 @@ jobs:
         run: gradle -p ${{ matrix.path }} build --build-cache --stacktrace
 
   calver:
+    needs: changes
+    if: needs.changes.outputs.calver == 'true'
     name: ${{ matrix.name }}
     runs-on: [self-hosted, Windows, X64]
     strategy:
