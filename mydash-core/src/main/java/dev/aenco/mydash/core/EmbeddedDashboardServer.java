@@ -467,25 +467,30 @@ final class EmbeddedDashboardServer {
             return;
         }
 
+        if (!method(exchange, "POST")) return;
+
         String prefix = "/api/v1/players/";
-        String suffix = "/kick";
-        if (!requestPath.startsWith(prefix) || !requestPath.endsWith(suffix)) {
+        if (!requestPath.startsWith(prefix)) {
             write(exchange, 404, "application/json; charset=utf-8", Json.error("not_found"));
             return;
         }
 
-        if (!method(exchange, "POST")) return;
-
-        String uuidPart = requestPath.substring(prefix.length(), requestPath.length() - suffix.length());
-        if (uuidPart.endsWith("/")) uuidPart = uuidPart.substring(0, uuidPart.length() - 1);
+        String remaining = requestPath.substring(prefix.length());
+        String[] segments = remaining.split("/");
+        if (segments.length != 2) {
+            write(exchange, 404, "application/json; charset=utf-8", Json.error("not_found"));
+            return;
+        }
 
         UUID uuid;
         try {
-            uuid = UUID.fromString(uuidPart);
+            uuid = UUID.fromString(segments[0]);
         } catch (IllegalArgumentException exception) {
             write(exchange, 400, "application/json; charset=utf-8", Json.error("invalid_uuid"));
             return;
         }
+
+        String action = segments[1];
 
         String body;
         try {
@@ -495,28 +500,92 @@ final class EmbeddedDashboardServer {
             return;
         }
 
-        String reason = Json.readOptionalReason(body);
-        if (reason == null) {
-            write(exchange, 400, "application/json; charset=utf-8", Json.error("invalid_reason"));
+        if ("kick".equals(action)) {
+            String reason = Json.readOptionalReason(body);
+            if (reason == null) {
+                write(exchange, 400, "application/json; charset=utf-8", Json.error("invalid_reason"));
+                return;
+            }
+
+            try {
+                boolean kicked = bridge.kickPlayer(uuid, reason).get(5, TimeUnit.SECONDS);
+                if (!kicked) {
+                    write(exchange, 404, "application/json; charset=utf-8", Json.error("player_not_found"));
+                    return;
+                }
+
+                write(exchange, 202, "application/json; charset=utf-8", Json.actionAccepted("kick"));
+            } catch (TimeoutException exception) {
+                write(exchange, 504, "application/json; charset=utf-8", Json.error("kick_timeout"));
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                write(exchange, 503, "application/json; charset=utf-8", Json.error("interrupted"));
+            } catch (ExecutionException exception) {
+                write(exchange, 500, "application/json; charset=utf-8", Json.error("kick_failed"));
+            }
+            return;
+        }
+
+        if (!oneOf(action, "op", "deop", "ban", "whitelist-add", "whitelist-remove")) {
+            write(exchange, 404, "application/json; charset=utf-8", Json.error("unknown_player_action"));
             return;
         }
 
         try {
-            boolean kicked = bridge.kickPlayer(uuid, reason).get(5, TimeUnit.SECONDS);
-            if (!kicked) {
+            PlayerSnapshot target = findOnlinePlayer(uuid);
+            if (target == null) {
                 write(exchange, 404, "application/json; charset=utf-8", Json.error("player_not_found"));
                 return;
             }
 
-            write(exchange, 202, "application/json; charset=utf-8", Json.actionAccepted("kick"));
+            String playerName = target.name();
+            if (!isSafePlayerName(playerName)) {
+                write(exchange, 500, "application/json; charset=utf-8", Json.error("unsafe_player_name"));
+                return;
+            }
+
+            String command;
+            if ("op".equals(action)) {
+                command = "op " + playerName;
+            } else if ("deop".equals(action)) {
+                command = "deop " + playerName;
+            } else if ("whitelist-add".equals(action)) {
+                command = "whitelist add " + playerName;
+            } else if ("whitelist-remove".equals(action)) {
+                command = "whitelist remove " + playerName;
+            } else {
+                String reason = Json.readOptionalReason(body);
+                if (reason == null) {
+                    write(exchange, 400, "application/json; charset=utf-8", Json.error("invalid_reason"));
+                    return;
+                }
+                command = "ban " + playerName + " " + reason;
+            }
+
+            bridge.executeCommand(command).get(5, TimeUnit.SECONDS);
+            write(exchange, 202, "application/json; charset=utf-8", Json.actionAccepted(action));
         } catch (TimeoutException exception) {
-            write(exchange, 504, "application/json; charset=utf-8", Json.error("kick_timeout"));
+            write(exchange, 504, "application/json; charset=utf-8", Json.error("player_action_timeout"));
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             write(exchange, 503, "application/json; charset=utf-8", Json.error("interrupted"));
         } catch (ExecutionException exception) {
-            write(exchange, 500, "application/json; charset=utf-8", Json.error("kick_failed"));
+            write(exchange, 500, "application/json; charset=utf-8", Json.error("player_action_failed"));
         }
+    }
+
+    private PlayerSnapshot findOnlinePlayer(UUID uuid)
+        throws InterruptedException, ExecutionException, TimeoutException {
+
+        List<PlayerSnapshot> players = bridge.players().get(5, TimeUnit.SECONDS);
+        for (PlayerSnapshot player : players) {
+            if (player.uuid().equals(uuid)) return player;
+        }
+        return null;
+    }
+
+    private static boolean isSafePlayerName(String name) {
+        return name != null && name.matches("[A-Za-z0-9_]{1,16}");
     }
 
     private static boolean oneOf(String value, String... allowed) {
