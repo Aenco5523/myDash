@@ -37,17 +37,15 @@ final class MyDashConfig {
         changed |= putIfAbsent(properties, "server.allowRemote", "false");
 
         MyDashConfig config = new MyDashConfig(path, properties);
-        if (changed || !Files.exists(path)) {
-            config.save();
-        }
+        if (changed || !Files.exists(path)) config.save();
         return config;
     }
 
-    String bindAddress() {
+    synchronized String bindAddress() {
         return properties.getProperty("server.bind", DEFAULT_HOST).trim();
     }
 
-    int port() {
+    synchronized int port() {
         String raw = properties.getProperty("server.port", Integer.toString(DEFAULT_PORT)).trim();
         try {
             int port = Integer.parseInt(raw);
@@ -58,15 +56,22 @@ final class MyDashConfig {
         }
     }
 
-    boolean allowRemote() {
+    synchronized boolean allowRemote() {
         return Boolean.parseBoolean(properties.getProperty("server.allowRemote", "false"));
     }
 
-    String get(String key) {
+    synchronized void updateServer(String bindAddress, int port, boolean allowRemote) throws IOException {
+        properties.setProperty("server.bind", bindAddress);
+        properties.setProperty("server.port", Integer.toString(port));
+        properties.setProperty("server.allowRemote", Boolean.toString(allowRemote));
+        save();
+    }
+
+    synchronized String get(String key) {
         return properties.getProperty(key);
     }
 
-    void set(String key, String value) {
+    synchronized void set(String key, String value) {
         properties.setProperty(key, value);
     }
 
