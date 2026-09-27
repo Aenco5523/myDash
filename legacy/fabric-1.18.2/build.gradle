@@ -1,0 +1,53 @@
+plugins {
+    id 'fabric-loom' version '1.6.5'
+}
+
+group = 'dev.aenco.mydash'
+version = 'v2.1'
+
+base {
+    archivesName = 'myDash-fabric-1.18.2'
+}
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://maven.fabricmc.net/' }
+}
+
+dependencies {
+    minecraft 'com.mojang:minecraft:1.18.2'
+    mappings loom.officialMojangMappings()
+    modImplementation 'net.fabricmc:fabric-loader:0.16.5'
+    modImplementation 'net.fabricmc.fabric-api:fabric-api:0.77.0+1.18.2'
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir '../../mydash-api/src/main/java'
+            srcDir '../../mydash-core/src/main/java'
+        }
+        resources {
+            srcDir '../../mydash-core/src/main/resources'
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 17
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+processResources {
+    filesMatching('fabric.mod.json') {
+        expand version: '2.1'
+    }
+}
+
+tasks.named('remapJar') {
+    archiveFileName = 'myDash-fabric-1.18.2-v2.1.jar'
+}
