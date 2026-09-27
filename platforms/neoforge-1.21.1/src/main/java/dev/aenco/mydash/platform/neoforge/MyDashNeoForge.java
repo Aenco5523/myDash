@@ -12,6 +12,8 @@ import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 
 import java.io.IOException;
+import java.nio.file.Paths;
+import java.util.concurrent.CompletableFuture;
 
 @Mod(MyDashNeoForge.MOD_ID)
 public final class MyDashNeoForge {
@@ -29,15 +31,34 @@ public final class MyDashNeoForge {
         MinecraftServer server = event.getServer();
         startedAt = System.currentTimeMillis();
 
-        ServerBridge bridge = () -> new ServerSnapshot(
-            "NeoForge",
-            SharedConstants.getCurrentVersion().getName(),
-            server.getPlayerCount(),
-            server.getMaxPlayers(),
-            System.currentTimeMillis() - startedAt
-        );
+        ServerBridge bridge = new ServerBridge() {
+            @Override
+            public ServerSnapshot snapshot() {
+                return new ServerSnapshot(
+                    "NeoForge",
+                    SharedConstants.getCurrentVersion().getName(),
+                    server.getPlayerCount(),
+                    server.getMaxPlayers(),
+                    System.currentTimeMillis() - startedAt
+                );
+            }
 
-        core = new MyDashCore(bridge);
+            @Override
+            public CompletableFuture<Void> executeCommand(String command) {
+                CompletableFuture<Void> future = new CompletableFuture<Void>();
+                server.execute(() -> {
+                    try {
+                        server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), command);
+                        future.complete(null);
+                    } catch (Throwable throwable) {
+                        future.completeExceptionally(throwable);
+                    }
+                });
+                return future;
+            }
+        };
+
+        core = new MyDashCore(bridge, Paths.get("config", "mydash.properties"));
         try {
             core.start();
         } catch (IOException | RuntimeException exception) {
