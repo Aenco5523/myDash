@@ -4,6 +4,7 @@ import dev.aenco.mydash.api.DashboardExtension;
 import dev.aenco.mydash.api.MyDashApi;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -11,16 +12,31 @@ import java.util.List;
 
 public final class MyDashCore implements MyDashApi {
     private final ServerBridge bridge;
+    private final Path configPath;
     private final List<DashboardExtension> extensions = new ArrayList<DashboardExtension>();
     private EmbeddedDashboardServer webServer;
 
-    public MyDashCore(ServerBridge bridge) {
+    public MyDashCore(ServerBridge bridge, Path configPath) {
         this.bridge = bridge;
+        this.configPath = configPath;
     }
 
     public synchronized void start() throws IOException {
         if (webServer != null) return;
-        webServer = new EmbeddedDashboardServer(bridge);
+
+        MyDashConfig config = MyDashConfig.load(configPath);
+        MyDashSecurity security = MyDashSecurity.loadOrCreate(config);
+
+        String initialToken = security.initialToken();
+        if (initialToken != null) {
+            System.out.println("[myDash] ============================================================");
+            System.out.println("[myDash] First-run administrator token:");
+            System.out.println("[myDash] " + initialToken);
+            System.out.println("[myDash] Copy it now. The plaintext token is not stored on disk.");
+            System.out.println("[myDash] ============================================================");
+        }
+
+        webServer = new EmbeddedDashboardServer(bridge, config, security);
         webServer.start();
     }
 
